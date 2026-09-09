@@ -8,8 +8,8 @@
    1. SUPABASE 설정
 ===================================================== */
 
-const SUPABASE_URL = "여기에_프로젝트_URL";
-const SUPABASE_ANON_KEY = "여기에_anon_key";
+const SUPABASE_URL = "https://yvpjbqsjsszderhhdnwv.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2cGpicXNqc3N6ZGVyaGhkbnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5NTExNzMsImV4cCI6MjEwNDUyNzE3M30.bpmCyGOPcaP1WSDRxxwgf6bYoL8VB4e839G_Rei9neoy";
 
 
 const supabaseClient = supabase.createClient(
