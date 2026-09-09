@@ -1,8 +1,39 @@
-/* =========================================
+/* =====================================================
    SCHOOL SURVEY
-   JAVASCRIPT
-========================================= */
+   Supabase + JavaScript
+===================================================== */
 
+
+/* =====================================================
+   1. SUPABASE 설정
+===================================================== */
+
+const SUPABASE_URL = "여기에_프로젝트_URL";
+const SUPABASE_ANON_KEY = "여기에_anon_key";
+
+
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+
+/* =====================================================
+   2. 전역 변수
+===================================================== */
+
+let surveys = [];
+
+let currentGrade = "all";
+
+let currentSearch = "";
+
+let currentQrUrl = "";
+
+
+/* =====================================================
+   3. HTML 요소
+===================================================== */
 
 const surveyList =
     document.getElementById("surveyList");
@@ -10,181 +41,199 @@ const surveyList =
 const surveyCount =
     document.getElementById("surveyCount");
 
-const searchInput =
-    document.getElementById("searchInput");
-
-const clearSearch =
-    document.getElementById("clearSearch");
-
 const emptyState =
     document.getElementById("emptyState");
 
+const searchInput =
+    document.getElementById("searchInput");
+
 const filterButtons =
-    document.querySelectorAll(".filter");
+    document.querySelectorAll(".filter-btn");
+
+const addModal =
+    document.getElementById("addModal");
+
+const openAddSurvey =
+    document.getElementById("openAddSurvey");
+
+const closeAddSurvey =
+    document.getElementById("closeAddSurvey");
+
+const surveyForm =
+    document.getElementById("surveyForm");
+
+const formError =
+    document.getElementById("formError");
+
+const submitSurvey =
+    document.getElementById("submitSurvey");
 
 const qrModal =
     document.getElementById("qrModal");
 
-const modalClose =
-    document.getElementById("modalClose");
+const closeQr =
+    document.getElementById("closeQr");
+
+const downloadQr =
+    document.getElementById("downloadQr");
 
 const qrTitle =
     document.getElementById("qrTitle");
 
-const qrContainer =
+const qrCodeContainer =
     document.getElementById("qrcode");
 
-const downloadQR =
-    document.getElementById("downloadQR");
+const toast =
+    document.getElementById("toast");
 
 
-let surveys = [];
+/* =====================================================
+   4. 페이지 시작
+===================================================== */
 
-let selectedGrade = "all";
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
 
-let selectedQR = null;
+        loadSurveys();
+
+    }
+);
 
 
-/* =========================================
-   LOAD DATA
-========================================= */
+/* =====================================================
+   5. DB에서 설문 불러오기
+===================================================== */
 
 async function loadSurveys() {
 
-    try {
-
-        const response =
-            await fetch("surveys.json");
-
-        if (!response.ok) {
-            throw new Error(
-                "설문 데이터를 불러올 수 없습니다."
-            );
-        }
-
-        surveys =
-            await response.json();
-
-        renderSurveys();
-
-    } catch (error) {
-
-        console.error(error);
-
-        surveyList.innerHTML = `
-            <div class="empty">
-                <div class="empty-icon">!</div>
-
-                <h3>
-                    설문을 불러오지 못했습니다.
-                </h3>
-
-                <p>
-                    surveys.json 파일을 확인해주세요.
-                </p>
-            </div>
-        `;
-    }
-
-}
+    surveyList.innerHTML = `
+        <div class="empty-state">
+            <p>설문을 불러오는 중입니다...</p>
+        </div>
+    `;
 
 
-/* =========================================
-   RENDER SURVEYS
-========================================= */
-
-function renderSurveys() {
-
-    const keyword =
-        searchInput.value
-            .trim()
-            .toLowerCase();
-
-
-    const filtered =
-        surveys.filter(survey => {
-
-            /*
-             * 학년 필터
-             */
-
-            const gradeMatch =
-                selectedGrade === "all" ||
-                survey.grade.includes(
-                    Number(selectedGrade)
-                );
-
-
-            /*
-             * 검색
-             */
-
-            const searchMatch =
-                survey.title
-                    .toLowerCase()
-                    .includes(keyword)
-
-                ||
-
-                survey.description
-                    .toLowerCase()
-                    .includes(keyword);
-
-
-            return gradeMatch && searchMatch;
-
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("surveys")
+        .select("*")
+        .order("created_at", {
+            ascending: false
         });
 
 
-    surveyCount.textContent =
-        filtered.length;
+    if (error) {
 
-
-    if (filtered.length === 0) {
+        console.error(error);
 
         surveyList.innerHTML = "";
 
-        emptyState.classList.remove(
-            "hidden"
+        showError(
+            "설문을 불러오지 못했습니다. Supabase 설정을 확인해주세요."
         );
 
         return;
     }
 
 
-    emptyState.classList.add(
-        "hidden"
-    );
+    surveys = data || [];
 
-
-    surveyList.innerHTML =
-        filtered
-            .map(createSurveyCard)
-            .join("");
-
+    renderSurveys();
 }
 
 
-/* =========================================
-   CREATE CARD
-========================================= */
+/* =====================================================
+   6. 설문 표시
+===================================================== */
+
+function renderSurveys() {
+
+    let filteredSurveys =
+        surveys.filter(survey => {
+
+            const matchesGrade =
+                currentGrade === "all" ||
+                survey.grades.includes(
+                    Number(currentGrade)
+                );
+
+
+            const searchText =
+                currentSearch
+                    .toLowerCase()
+                    .trim();
+
+
+            const matchesSearch =
+                !searchText ||
+                survey.title
+                    .toLowerCase()
+                    .includes(searchText) ||
+                (survey.description || "")
+                    .toLowerCase()
+                    .includes(searchText);
+
+
+            return matchesGrade && matchesSearch;
+
+        });
+
+
+    surveyCount.textContent =
+        filteredSurveys.length;
+
+
+    surveyList.innerHTML = "";
+
+
+    if (filteredSurveys.length === 0) {
+
+        emptyState.classList.remove("hidden");
+
+        return;
+
+    }
+
+
+    emptyState.classList.add("hidden");
+
+
+    filteredSurveys.forEach(
+        survey => {
+
+            surveyList.appendChild(
+                createSurveyCard(survey)
+            );
+
+        }
+    );
+}
+
+
+/* =====================================================
+   7. 설문 카드 생성
+===================================================== */
 
 function createSurveyCard(survey) {
 
+    const card =
+        document.createElement("article");
+
+    card.className = "survey-card";
+
+
     const closed =
-        survey.status === "closed";
+        isClosed(survey.deadline);
 
 
-    const gradeText =
-        survey.grade.length === 3
-
-            ? "전체"
-
-            : survey.grade
-                .map(
-                    grade => `${grade}학년`
-                )
-                .join(", ");
+    const grades =
+        survey.grades
+            .sort((a, b) => a - b)
+            .map(g => `${g}학년`)
+            .join(" · ");
 
 
     const statusText =
@@ -193,199 +242,460 @@ function createSurveyCard(survey) {
             : "진행 중";
 
 
-    return `
-
-        <article
-            class="survey-card
-            ${closed ? "closed" : ""}"
-        >
-
-            <div class="survey-main">
-
-                <div class="survey-meta">
-
-                    <span class="grade-badge">
-                        ${gradeText}
-                    </span>
-
-                    <span
-                        class="status
-                        ${closed
-                            ? "status-closed"
-                            : "status-active"}"
-                    >
-                        ${statusText}
-                    </span>
-
-                </div>
+    const statusClass =
+        closed
+            ? "status-closed"
+            : "status-active";
 
 
-                <h3 class="survey-title">
-                    ${escapeHTML(
-                        survey.title
-                    )}
-                </h3>
+    const deadline =
+        formatDate(survey.deadline);
 
 
-                <p class="survey-description">
-                    ${escapeHTML(
-                        survey.description
-                    )}
-                </p>
+    card.innerHTML = `
 
+        <div class="survey-info">
 
-                <p class="survey-date">
-                    마감일 · ${survey.deadline}
-                </p>
+            <div class="survey-meta">
+
+                <span class="grade-badge">
+                    ${escapeHTML(grades)}
+                </span>
+
+                <span class="${statusClass}">
+                    ${statusText}
+                </span>
 
             </div>
 
 
-            <div class="survey-actions">
-
-                <button
-                    class="qr-button"
-                    onclick="openQR(
-                        '${escapeJS(survey.title)}',
-                        '${escapeJS(survey.url)}'
-                    )"
-                >
-                    QR
-                </button>
+            <h2 class="survey-title">
+                ${escapeHTML(survey.title)}
+            </h2>
 
 
-                <a
-                    href="${survey.url}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="participate-button"
-                >
-                    참여하기
-                </a>
+            <p class="survey-description">
+                ${escapeHTML(survey.description || "")}
+            </p>
 
-            </div>
 
-        </article>
+            <p class="survey-deadline">
+                마감일 · ${deadline}
+            </p>
+
+        </div>
+
+
+        <div class="survey-actions">
+
+            <button
+                class="btn-qr"
+                data-action="qr"
+            >
+                QR
+            </button>
+
+
+            <button
+                class="btn-participate ${closed ? "disabled" : ""}"
+                data-action="participate"
+                ${closed ? "disabled" : ""}
+            >
+                ${closed ? "마감됨" : "참여하기"}
+            </button>
+
+        </div>
 
     `;
-}
 
 
-/* =========================================
-   GRADE FILTER
-========================================= */
+    const qrButton =
+        card.querySelector(
+            '[data-action="qr"]'
+        );
 
-filterButtons.forEach(button => {
 
-    button.addEventListener(
+    const participateButton =
+        card.querySelector(
+            '[data-action="participate"]'
+        );
+
+
+    qrButton.addEventListener(
         "click",
         () => {
 
-            filterButtons.forEach(btn => {
-
-                btn.classList.remove(
-                    "active"
-                );
-
-            });
-
-
-            button.classList.add(
-                "active"
+            openQrModal(
+                survey.title,
+                survey.survey_url
             );
-
-
-            selectedGrade =
-                button.dataset.grade;
-
-
-            renderSurveys();
 
         }
     );
 
-});
+
+    participateButton.addEventListener(
+        "click",
+        () => {
+
+            if (!closed) {
+
+                window.open(
+                    survey.survey_url,
+                    "_blank",
+                    "noopener,noreferrer"
+                );
+
+            }
+
+        }
+    );
 
 
-/* =========================================
-   SEARCH
-========================================= */
+    return card;
+}
+
+
+/* =====================================================
+   8. 검색
+===================================================== */
 
 searchInput.addEventListener(
     "input",
+    event => {
+
+        currentSearch =
+            event.target.value;
+
+        renderSurveys();
+
+    }
+);
+
+
+/* =====================================================
+   9. 학년 필터
+===================================================== */
+
+filterButtons.forEach(
+    button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                filterButtons.forEach(
+                    btn =>
+                        btn.classList.remove(
+                            "active"
+                        )
+                );
+
+
+                button.classList.add("active");
+
+
+                currentGrade =
+                    button.dataset.grade;
+
+
+                renderSurveys();
+
+            }
+        );
+
+    }
+);
+
+
+/* =====================================================
+   10. 설문 추가 모달
+===================================================== */
+
+openAddSurvey.addEventListener(
+    "click",
     () => {
 
-        if (searchInput.value) {
+        addModal.classList.remove(
+            "hidden"
+        );
 
-            clearSearch.style.display =
-                "block";
+        document.body.style.overflow =
+            "hidden";
 
-        } else {
+    }
+);
 
-            clearSearch.style.display =
-                "none";
+
+closeAddSurvey.addEventListener(
+    "click",
+    closeAddModal
+);
+
+
+document.querySelector(
+    "#addModal .modal-backdrop"
+).addEventListener(
+    "click",
+    closeAddModal
+);
+
+
+function closeAddModal() {
+
+    addModal.classList.add(
+        "hidden"
+    );
+
+    document.body.style.overflow =
+        "";
+
+    formError.classList.add(
+        "hidden"
+    );
+
+}
+
+
+/* =====================================================
+   11. 설문 등록
+===================================================== */
+
+surveyForm.addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+
+        formError.classList.add(
+            "hidden"
+        );
+
+
+        /* 제목 */
+
+        const title =
+            document
+                .getElementById("surveyTitle")
+                .value
+                .trim();
+
+
+        /* 설명 */
+
+        const description =
+            document
+                .getElementById("surveyDescription")
+                .value
+                .trim();
+
+
+        /* 학년 */
+
+        const gradeInputs =
+            document.querySelectorAll(
+                'input[name="grade"]:checked'
+            );
+
+
+        const grades =
+            Array.from(
+                gradeInputs
+            ).map(
+                input =>
+                    Number(input.value)
+            );
+
+
+        /* 마감일 */
+
+        const deadline =
+            document
+                .getElementById("surveyDeadline")
+                .value;
+
+
+        /* URL */
+
+        const surveyUrl =
+            document
+                .getElementById("surveyUrl")
+                .value
+                .trim();
+
+
+        /* 유효성 검사 */
+
+        if (!title) {
+
+            showFormError(
+                "설문 제목을 입력해주세요."
+            );
+
+            return;
 
         }
 
 
+        if (!description) {
+
+            showFormError(
+                "설명 내용을 입력해주세요."
+            );
+
+            return;
+
+        }
+
+
+        if (grades.length === 0) {
+
+            showFormError(
+                "대상 학년을 하나 이상 선택해주세요."
+            );
+
+            return;
+
+        }
+
+
+        if (!deadline) {
+
+            showFormError(
+                "마감일을 선택해주세요."
+            );
+
+            return;
+
+        }
+
+
+        if (!isValidUrl(surveyUrl)) {
+
+            showFormError(
+                "올바른 설문 링크를 입력해주세요."
+            );
+
+            return;
+
+        }
+
+
+        /* 버튼 상태 */
+
+        submitSurvey.disabled = true;
+
+        submitSurvey.textContent =
+            "등록하는 중...";
+
+
+        /* DB 저장 */
+
+        const {
+            data,
+            error
+        } = await supabaseClient
+            .from("surveys")
+            .insert([
+                {
+                    title: title,
+
+                    description: description,
+
+                    grades: grades,
+
+                    deadline: deadline,
+
+                    status: "active",
+
+                    survey_url: surveyUrl
+                }
+            ])
+            .select()
+            .single();
+
+
+        /* 오류 */
+
+        if (error) {
+
+            console.error(error);
+
+            showFormError(
+                "설문 등록에 실패했습니다. 잠시 후 다시 시도해주세요."
+            );
+
+            submitSurvey.disabled = false;
+
+            submitSurvey.textContent =
+                "설문 등록하기";
+
+            return;
+
+        }
+
+
+        /* 성공 */
+
+        surveys.unshift(data);
+
+
         renderSurveys();
+
+
+        surveyForm.reset();
+
+
+        closeAddModal();
+
+
+        submitSurvey.disabled = false;
+
+        submitSurvey.textContent =
+            "설문 등록하기";
+
+
+        showToast(
+            "설문이 등록되었습니다."
+        );
 
     }
 );
 
 
-/* =========================================
-   CLEAR SEARCH
-========================================= */
+/* =====================================================
+   12. QR 코드
+===================================================== */
 
-clearSearch.addEventListener(
-    "click",
-    () => {
-
-        searchInput.value = "";
-
-        clearSearch.style.display =
-            "none";
-
-        renderSurveys();
-
-        searchInput.focus();
-
-    }
-);
-
-
-/* =========================================
-   QR
-========================================= */
-
-function openQR(title, url) {
+function openQrModal(
+    title,
+    url
+) {
 
     qrTitle.textContent =
         title;
 
 
-    qrContainer.innerHTML =
+    currentQrUrl =
+        url;
+
+
+    qrCodeContainer.innerHTML =
         "";
 
 
-    selectedQR = {
-        title: title,
-        url: url
-    };
-
-
     new QRCode(
-        qrContainer,
+        qrCodeContainer,
         {
             text: url,
 
-            width: 200,
+            width: 220,
 
-            height: 200,
+            height: 220,
 
             correctLevel:
-                QRCode.CorrectLevel.H
+                QRCode.CorrectLevel.M
         }
     );
 
@@ -397,15 +707,24 @@ function openQR(title, url) {
 
     document.body.style.overflow =
         "hidden";
-
 }
 
 
-/* =========================================
-   CLOSE QR
-========================================= */
+closeQr.addEventListener(
+    "click",
+    closeQrModal
+);
 
-function closeQR() {
+
+document.querySelector(
+    "#qrModal .modal-backdrop"
+).addEventListener(
+    "click",
+    closeQrModal
+);
+
+
+function closeQrModal() {
 
     qrModal.classList.add(
         "hidden"
@@ -417,53 +736,28 @@ function closeQR() {
 }
 
 
-modalClose.addEventListener(
-    "click",
-    closeQR
-);
+/* =====================================================
+   13. QR PNG 저장
+===================================================== */
 
-
-document.querySelector(
-    ".modal-background"
-).addEventListener(
-    "click",
-    closeQR
-);
-
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (event.key === "Escape") {
-            closeQR();
-        }
-
-    }
-);
-
-
-/* =========================================
-   DOWNLOAD QR
-========================================= */
-
-downloadQR.addEventListener(
+downloadQr.addEventListener(
     "click",
     () => {
 
-        if (!selectedQR) {
-            return;
-        }
-
-
         const canvas =
-            qrContainer.querySelector(
+            qrCodeContainer.querySelector(
                 "canvas"
             );
 
 
         if (!canvas) {
+
+            showToast(
+                "QR 코드를 준비하는 중입니다."
+            );
+
             return;
+
         }
 
 
@@ -472,7 +766,7 @@ downloadQR.addEventListener(
 
 
         link.download =
-            `${selectedQR.title}-QR.png`;
+            "school-survey-qr.png";
 
 
         link.href =
@@ -487,71 +781,169 @@ downloadQR.addEventListener(
 );
 
 
-/* =========================================
-   SECURITY
-========================================= */
+/* =====================================================
+   14. 날짜
+===================================================== */
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+        return "-";
+    }
+
+
+    const date =
+        new Date(
+            dateString + "T00:00:00"
+        );
+
+
+    return (
+        date.getFullYear()
+        + "-"
+        + String(
+            date.getMonth() + 1
+        ).padStart(2, "0")
+        + "-"
+        + String(
+            date.getDate()
+        ).padStart(2, "0")
+    );
+}
+
+
+/* =====================================================
+   15. 마감 확인
+===================================================== */
+
+function isClosed(deadline) {
+
+    if (!deadline) {
+        return false;
+    }
+
+
+    const today =
+        new Date();
+
+
+    today.setHours(
+        0,
+        0,
+        0,
+        0
+    );
+
+
+    const end =
+        new Date(
+            deadline + "T23:59:59"
+        );
+
+
+    return today > end;
+}
+
+
+/* =====================================================
+   16. URL 검사
+===================================================== */
+
+function isValidUrl(value) {
+
+    try {
+
+        const url =
+            new URL(value);
+
+
+        return (
+            url.protocol === "http:" ||
+            url.protocol === "https:"
+        );
+
+    } catch {
+
+        return false;
+
+    }
+}
+
+
+/* =====================================================
+   17. HTML 보안 처리
+===================================================== */
 
 function escapeHTML(value) {
 
     return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
-        .replaceAll(
-            "&",
-            "&amp;"
-        )
 
-        .replaceAll(
-            "<",
-            "&lt;"
-        )
+/* =====================================================
+   18. 에러
+===================================================== */
 
-        .replaceAll(
-            ">",
-            "&gt;"
-        )
+function showFormError(message) {
 
-        .replaceAll(
-            '"',
-            "&quot;"
-        )
+    formError.textContent =
+        message;
 
-        .replaceAll(
-            "'",
-            "&#039;"
-        );
+    formError.classList.remove(
+        "hidden"
+    );
+}
+
+
+function showError(message) {
+
+    surveyList.innerHTML = `
+        <div class="empty-state">
+            <h3>불러오지 못했습니다.</h3>
+            <p>${escapeHTML(message)}</p>
+        </div>
+    `;
 
 }
 
 
-function escapeJS(value) {
+/* =====================================================
+   19. 토스트
+===================================================== */
 
-    return String(value)
+let toastTimer;
 
-        .replaceAll(
-            "\\",
-            "\\\\"
-        )
 
-        .replaceAll(
-            "'",
-            "\\'"
-        )
+function showToast(message) {
 
-        .replaceAll(
-            "\n",
-            "\\n"
-        )
+    toast.textContent =
+        message;
 
-        .replaceAll(
-            "\r",
-            "\\r"
+
+    toast.classList.add(
+        "show"
+    );
+
+
+    clearTimeout(
+        toastTimer
+    );
+
+
+    toastTimer =
+        setTimeout(
+            () => {
+
+                toast.classList.remove(
+                    "show"
+                );
+
+            },
+            2500
         );
-
 }
-
-
-/* =========================================
-   START
-========================================= */
-
-loadSurveys();
