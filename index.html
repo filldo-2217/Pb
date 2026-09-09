@@ -2,372 +2,508 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>학교 설문조사</title>
     <meta
-        name="description"
-        content="학교에서 진행 중인 설문조사를 한곳에서 확인하세요."
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
     >
 
-    <link rel="stylesheet" href="style.css">
+    <title>학교 설문조사</title>
 
-    <!-- QR Code -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <!-- HEADER -->
-    <header class="header">
-        <div class="header-inner">
+<!-- =========================
+     HEADER
+========================= -->
 
-            <a href="#" class="logo">
-                <span class="logo-icon">S</span>
-                <span class="logo-text">학교 설문조사</span>
-            </a>
+<header class="header">
 
-            <nav class="nav">
-                <a href="#surveys">설문 목록</a>
-                <a href="#guide">이용 안내</a>
-            </nav>
+    <div class="header-inner">
 
-            <button
-                class="mobile-menu"
-                id="mobileMenu"
-                aria-label="메뉴"
-            >
-                ☰
-            </button>
+        <a href="#" class="logo" onclick="location.reload(); return false;">
+            <span class="logo-icon">S</span>
+            <span>학교 설문조사</span>
+        </a>
 
-        </div>
-    </header>
+        <nav class="nav">
+            <a href="#surveys">설문 목록</a>
+            <a href="#guide">이용 안내</a>
+        </nav>
+
+    </div>
+
+</header>
 
 
-    <!-- MAIN -->
-    <main>
+<!-- =========================
+     MAIN
+========================= -->
 
-        <!-- HERO -->
-        <section class="hero">
+<main id="surveys">
 
-            <div class="hero-inner">
+    <section class="survey-section">
 
-                <div class="hero-content">
+        <!-- 제목 -->
 
-                    <span class="eyebrow">
-                        SCHOOL SURVEY
-                    </span>
+        <div class="section-header">
 
-                    <h1>
-                        여러분의 의견이<br>
-                        <span>학교를 바꿉니다.</span>
-                    </h1>
+            <div>
 
-                    <p>
-                        학교에서 진행 중인 설문조사를<br class="mobile-only">
-                        한곳에서 확인하고 참여해보세요.
-                    </p>
+                <p class="section-label">
+                    SURVEYS
+                </p>
 
-                </div>
+                <h1>
+                    설문 목록
+                </h1>
 
-                <div class="hero-message">
-
-                    <div class="message-icon">
-                        ✓
-                    </div>
-
-                    <div>
-                        <strong>잠깐만 시간을 내주세요.</strong>
-
-                        <p>
-                            여러분의 의견 하나하나가<br>
-                            학교를 만드는 데 도움이 됩니다.
-                        </p>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- SURVEYS -->
-        <section
-            class="survey-section"
-            id="surveys"
-        >
-
-            <div class="section-top">
-
-                <div>
-                    <span class="section-label">
-                        SURVEYS
-                    </span>
-
-                    <h2>설문 목록</h2>
-
-                    <p>
-                        현재 참여할 수 있는 설문입니다.
-                    </p>
-                </div>
-
-                <div class="survey-total">
-                    <strong id="surveyCount">0</strong>
-                    <span>개</span>
-                </div>
-
-            </div>
-
-
-            <!-- SEARCH -->
-            <div class="search-wrapper">
-
-                <span class="search-icon">
-                    ⌕
-                </span>
-
-                <input
-                    type="text"
-                    id="searchInput"
-                    placeholder="설문을 검색해보세요"
-                    autocomplete="off"
-                >
-
-                <button
-                    id="clearSearch"
-                    class="clear-search"
-                    aria-label="검색어 삭제"
-                >
-                    ×
-                </button>
-
-            </div>
-
-
-            <!-- GRADE FILTER -->
-            <div class="filters">
-
-                <button
-                    class="filter active"
-                    data-grade="all"
-                >
-                    전체
-                </button>
-
-                <button
-                    class="filter"
-                    data-grade="1"
-                >
-                    1학년
-                </button>
-
-                <button
-                    class="filter"
-                    data-grade="2"
-                >
-                    2학년
-                </button>
-
-                <button
-                    class="filter"
-                    data-grade="3"
-                >
-                    3학년
-                </button>
-
-            </div>
-
-
-            <!-- SURVEY LIST -->
-            <div
-                class="survey-list"
-                id="surveyList"
-            >
-
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>설문을 불러오는 중...</p>
-                </div>
-
-            </div>
-
-
-            <!-- EMPTY -->
-            <div
-                class="empty hidden"
-                id="emptyState"
-            >
-
-                <div class="empty-icon">
-                    🔎
-                </div>
-
-                <h3>
-                    설문을 찾을 수 없습니다.
-                </h3>
-
-                <p>
-                    검색어나 학년을 다시 확인해주세요.
+                <p class="section-description">
+                    현재 참여할 수 있는 설문입니다.
                 </p>
 
             </div>
 
-        </section>
+            <div class="survey-count">
+                <strong id="surveyCount">0</strong>개
+            </div>
+
+        </div>
 
 
-        <!-- GUIDE -->
-        <section
-            class="guide-section"
-            id="guide"
+        <!-- 검색 -->
+
+        <div class="search-box">
+
+            <span class="search-icon">⌕</span>
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="설문을 검색해보세요"
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <!-- 학년 -->
+
+        <div class="grade-filter">
+
+            <button
+                class="filter-btn active"
+                data-grade="all"
+            >
+                전체
+            </button>
+
+            <button
+                class="filter-btn"
+                data-grade="1"
+            >
+                1학년
+            </button>
+
+            <button
+                class="filter-btn"
+                data-grade="2"
+            >
+                2학년
+            </button>
+
+            <button
+                class="filter-btn"
+                data-grade="3"
+            >
+                3학년
+            </button>
+
+        </div>
+
+
+        <!-- 설문 추가 버튼 -->
+
+        <button
+            class="add-survey-button"
+            id="openAddSurvey"
+        >
+            <span>＋</span>
+            설문 추가하기
+        </button>
+
+
+        <!-- 설문 목록 -->
+
+        <div
+            id="surveyList"
+            class="survey-list"
+        ></div>
+
+
+        <!-- 결과 없음 -->
+
+        <div
+            id="emptyState"
+            class="empty-state hidden"
         >
 
-            <div class="guide-inner">
+            <div class="empty-icon">
+                －
+            </div>
 
-                <span class="section-label">
-                    GUIDE
-                </span>
+            <h3>
+                설문이 없습니다.
+            </h3>
 
-                <h2>
-                    설문 참여 방법
-                </h2>
+            <p>
+                다른 검색어나 학년을 선택해보세요.
+            </p>
 
-                <div class="guide-grid">
+        </div>
 
-                    <div class="guide-card">
+    </section>
 
-                        <span class="guide-number">
-                            01
-                        </span>
 
+    <!-- =========================
+         GUIDE
+    ========================= -->
+
+    <section
+        id="guide"
+        class="guide-section"
+    >
+
+        <div class="guide-inner">
+
+            <p class="section-label">
+                GUIDE
+            </p>
+
+            <h2>
+                이용 안내
+            </h2>
+
+            <div class="guide-grid">
+
+                <div class="guide-item">
+
+                    <span class="guide-number">
+                        01
+                    </span>
+
+                    <div>
                         <h3>
                             설문 찾기
                         </h3>
 
                         <p>
-                            학년을 선택하거나 검색해서
+                            검색하거나 학년을 선택해서
                             원하는 설문을 찾아보세요.
                         </p>
-
                     </div>
 
+                </div>
 
-                    <div class="guide-card">
 
-                        <span class="guide-number">
-                            02
-                        </span>
+                <div class="guide-item">
 
+                    <span class="guide-number">
+                        02
+                    </span>
+
+                    <div>
                         <h3>
-                            참여하기
+                            설문 참여
                         </h3>
 
                         <p>
-                            설문을 선택하고
-                            참여하기 버튼을 눌러주세요.
+                            참여하기 버튼을 눌러
+                            설문에 참여할 수 있습니다.
                         </p>
-
                     </div>
 
+                </div>
 
-                    <div class="guide-card">
 
-                        <span class="guide-number">
-                            03
-                        </span>
+                <div class="guide-item">
 
+                    <span class="guide-number">
+                        03
+                    </span>
+
+                    <div>
                         <h3>
-                            QR로 참여하기
+                            설문 만들기
                         </h3>
 
                         <p>
-                            QR 버튼을 누르면
-                            휴대폰으로 바로 스캔할 수 있습니다.
+                            누구나 새로운 설문을
+                            등록할 수 있습니다.
                         </p>
-
                     </div>
 
                 </div>
 
             </div>
 
-        </section>
+        </div>
 
-    </main>
+    </section>
+
+</main>
 
 
-    <!-- QR MODAL -->
-    <div
-        class="modal hidden"
-        id="qrModal"
-    >
+<!-- =========================
+     ADD SURVEY MODAL
+========================= -->
 
-        <div class="modal-background"></div>
+<div
+    id="addModal"
+    class="modal hidden"
+>
 
-        <div class="qr-box">
+    <div class="modal-backdrop"></div>
+
+    <div class="modal-box">
+
+        <div class="modal-header">
+
+            <div>
+                <p class="section-label">
+                    NEW SURVEY
+                </p>
+
+                <h2>
+                    설문 추가하기
+                </h2>
+            </div>
 
             <button
                 class="modal-close"
-                id="modalClose"
-                aria-label="닫기"
+                id="closeAddSurvey"
             >
                 ×
             </button>
 
-            <span class="section-label">
-                QR CODE
-            </span>
+        </div>
 
-            <h2 id="qrTitle">
-                설문 QR코드
-            </h2>
 
-            <p class="qr-description">
-                휴대폰 카메라로 QR코드를 스캔하세요.
-            </p>
+        <form id="surveyForm">
+
+            <!-- 제목 -->
+
+            <div class="form-group">
+
+                <label for="surveyTitle">
+                    설문 제목
+                </label>
+
+                <input
+                    id="surveyTitle"
+                    type="text"
+                    maxlength="100"
+                    placeholder="예: 2026 2학기 학교생활 만족도 조사"
+                    required
+                >
+
+            </div>
+
+
+            <!-- 설명 -->
+
+            <div class="form-group">
+
+                <label for="surveyDescription">
+                    설명
+                </label>
+
+                <textarea
+                    id="surveyDescription"
+                    maxlength="300"
+                    placeholder="설문에 대한 간단한 설명을 입력해주세요."
+                    required
+                ></textarea>
+
+            </div>
+
+
+            <!-- 학년 -->
+
+            <div class="form-group">
+
+                <label>
+                    대상 학년
+                </label>
+
+                <div class="grade-checkboxes">
+
+                    <label class="check-label">
+                        <input
+                            type="checkbox"
+                            name="grade"
+                            value="1"
+                        >
+                        <span>1학년</span>
+                    </label>
+
+                    <label class="check-label">
+                        <input
+                            type="checkbox"
+                            name="grade"
+                            value="2"
+                        >
+                        <span>2학년</span>
+                    </label>
+
+                    <label class="check-label">
+                        <input
+                            type="checkbox"
+                            name="grade"
+                            value="3"
+                        >
+                        <span>3학년</span>
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <!-- 마감일 -->
+
+            <div class="form-group">
+
+                <label for="surveyDeadline">
+                    마감일
+                </label>
+
+                <input
+                    id="surveyDeadline"
+                    type="date"
+                    required
+                >
+
+            </div>
+
+
+            <!-- 설문 주소 -->
+
+            <div class="form-group">
+
+                <label for="surveyUrl">
+                    설문 링크
+                </label>
+
+                <input
+                    id="surveyUrl"
+                    type="url"
+                    placeholder="https://forms.google.com/..."
+                    required
+                >
+
+                <p class="input-help">
+                    구글 폼 등 실제 설문이 있는 주소를 입력해주세요.
+                </p>
+
+            </div>
+
 
             <div
-                class="qr-container"
-                id="qrcode"
+                id="formError"
+                class="form-error hidden"
             ></div>
 
+
             <button
-                class="download-qr"
-                id="downloadQR"
+                type="submit"
+                class="submit-button"
+                id="submitSurvey"
             >
-                QR코드 저장
+                설문 등록하기
             </button>
 
-        </div>
+        </form>
 
     </div>
 
-
-    <!-- FOOTER -->
-    <footer class="footer">
-
-        <div class="footer-inner">
-
-            <div>
-                <strong>
-                    학교 설문조사
-                </strong>
-
-                <p>
-                    학교 구성원의 의견을 모으는 공간
-                </p>
-            </div>
-
-            <span>
-                © 2026 School Survey
-            </span>
-
-        </div>
-
-    </footer>
+</div>
 
 
-    <script src="script.js"></script>
+<!-- =========================
+     QR MODAL
+========================= -->
+
+<div
+    id="qrModal"
+    class="modal hidden"
+>
+
+    <div class="modal-backdrop"></div>
+
+    <div class="qr-modal-box">
+
+        <button
+            class="modal-close qr-close"
+            id="closeQr"
+        >
+            ×
+        </button>
+
+        <p class="section-label">
+            QR CODE
+        </p>
+
+        <h2 id="qrTitle">
+            설문 QR 코드
+        </h2>
+
+        <div
+            id="qrcode"
+            class="qrcode"
+        ></div>
+
+        <p class="qr-description">
+            스마트폰으로 QR 코드를 스캔하면
+            설문에 바로 참여할 수 있습니다.
+        </p>
+
+        <button
+            id="downloadQr"
+            class="submit-button"
+        >
+            QR코드 저장
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================
+     TOAST
+========================= -->
+
+<div
+    id="toast"
+    class="toast"
+></div>
+
+
+<!-- =========================
+     SUPABASE
+========================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- QR CODE -->
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<!-- YOUR SCRIPT -->
+
+<script src="script.js"></script>
 
 </body>
 </html>
