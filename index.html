@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
+
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
@@ -14,15 +16,15 @@
 
 <body>
 
-<!-- =========================
-     HEADER
-========================= -->
-
 <header class="header">
 
     <div class="header-inner">
 
-        <a href="#" class="logo" onclick="location.reload(); return false;">
+        <a
+            href="#"
+            class="logo"
+            onclick="location.reload(); return false;"
+        >
             <span class="logo-icon">S</span>
             <span>학교 설문조사</span>
         </a>
@@ -37,15 +39,9 @@
 </header>
 
 
-<!-- =========================
-     MAIN
-========================= -->
-
 <main id="surveys">
 
     <section class="survey-section">
-
-        <!-- 제목 -->
 
         <div class="section-header">
 
@@ -72,8 +68,6 @@
         </div>
 
 
-        <!-- 검색 -->
-
         <div class="search-box">
 
             <span class="search-icon">⌕</span>
@@ -87,8 +81,6 @@
 
         </div>
 
-
-        <!-- 학년 -->
 
         <div class="grade-filter">
 
@@ -123,8 +115,6 @@
         </div>
 
 
-        <!-- 설문 추가 버튼 -->
-
         <button
             class="add-survey-button"
             id="openAddSurvey"
@@ -134,15 +124,11 @@
         </button>
 
 
-        <!-- 설문 목록 -->
-
         <div
             id="surveyList"
             class="survey-list"
         ></div>
 
-
-        <!-- 결과 없음 -->
 
         <div
             id="emptyState"
@@ -165,10 +151,6 @@
 
     </section>
 
-
-    <!-- =========================
-         GUIDE
-    ========================= -->
 
     <section
         id="guide"
@@ -194,6 +176,7 @@
                     </span>
 
                     <div>
+
                         <h3>
                             설문 찾기
                         </h3>
@@ -202,6 +185,7 @@
                             검색하거나 학년을 선택해서
                             원하는 설문을 찾아보세요.
                         </p>
+
                     </div>
 
                 </div>
@@ -214,6 +198,7 @@
                     </span>
 
                     <div>
+
                         <h3>
                             설문 참여
                         </h3>
@@ -222,6 +207,7 @@
                             참여하기 버튼을 눌러
                             설문에 참여할 수 있습니다.
                         </p>
+
                     </div>
 
                 </div>
@@ -234,6 +220,7 @@
                     </span>
 
                     <div>
+
                         <h3>
                             설문 만들기
                         </h3>
@@ -242,6 +229,7 @@
                             누구나 새로운 설문을
                             등록할 수 있습니다.
                         </p>
+
                     </div>
 
                 </div>
@@ -255,9 +243,7 @@
 </main>
 
 
-<!-- =========================
-     ADD SURVEY MODAL
-========================= -->
+<!-- 설문 추가 모달 -->
 
 <div
     id="addModal"
@@ -271,6 +257,7 @@
         <div class="modal-header">
 
             <div>
+
                 <p class="section-label">
                     NEW SURVEY
                 </p>
@@ -278,6 +265,7 @@
                 <h2>
                     설문 추가하기
                 </h2>
+
             </div>
 
             <button
@@ -291,8 +279,6 @@
 
 
         <form id="surveyForm">
-
-            <!-- 제목 -->
 
             <div class="form-group">
 
@@ -311,8 +297,6 @@
             </div>
 
 
-            <!-- 설명 -->
-
             <div class="form-group">
 
                 <label for="surveyDescription">
@@ -329,8 +313,6 @@
             </div>
 
 
-            <!-- 학년 -->
-
             <div class="form-group">
 
                 <label>
@@ -340,38 +322,53 @@
                 <div class="grade-checkboxes">
 
                     <label class="check-label">
+
                         <input
                             type="checkbox"
                             name="grade"
                             value="1"
                         >
-                        <span>1학년</span>
+
+                        <span>
+                            1학년
+                        </span>
+
                     </label>
 
+
                     <label class="check-label">
+
                         <input
                             type="checkbox"
                             name="grade"
                             value="2"
                         >
-                        <span>2학년</span>
+
+                        <span>
+                            2학년
+                        </span>
+
                     </label>
 
+
                     <label class="check-label">
+
                         <input
                             type="checkbox"
                             name="grade"
                             value="3"
                         >
-                        <span>3학년</span>
+
+                        <span>
+                            3학년
+                        </span>
+
                     </label>
 
                 </div>
 
             </div>
 
-
-            <!-- 마감일 -->
 
             <div class="form-group">
 
@@ -387,8 +384,6 @@
 
             </div>
 
-
-            <!-- 설문 주소 -->
 
             <div class="form-group">
 
@@ -431,9 +426,7 @@
 </div>
 
 
-<!-- =========================
-     QR MODAL
-========================= -->
+<!-- QR 모달 -->
 
 <div
     id="qrModal"
@@ -481,27 +474,21 @@
 </div>
 
 
-<!-- =========================
-     TOAST
-========================= -->
-
 <div
     id="toast"
     class="toast"
 ></div>
 
 
-<!-- =========================
-     SUPABASE
-========================= -->
+<!-- Supabase -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- QR CODE -->
+<!-- QR Code -->
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
-<!-- YOUR SCRIPT -->
+<!-- JavaScript -->
 
 <script src="script.js"></script>
 
