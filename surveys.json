@@ -1,0 +1,47 @@
+[
+    {
+        "id": "survey-001",
+        "title": "2026 2학기 학교생활 만족도 조사",
+        "description": "학교생활과 교육환경에 대한 여러분의 의견을 알려주세요.",
+        "grade": [2],
+        "deadline": "2026-09-20",
+        "status": "active",
+        "url": "https://forms.google.com/"
+    },
+    {
+        "id": "survey-002",
+        "title": "학생회 활동에 대한 의견 조사",
+        "description": "학생회 활동과 앞으로 진행했으면 하는 활동을 조사합니다.",
+        "grade": [1, 2, 3],
+        "deadline": "2026-09-18",
+        "status": "active",
+        "url": "https://forms.google.com/"
+    },
+    {
+        "id": "survey-003",
+        "title": "1학년 학교생활 의견 조사",
+        "description": "1학년 학생들의 학교생활에 대한 의견을 듣습니다.",
+        "grade": [1],
+        "deadline": "2026-09-15",
+        "status": "active",
+        "url": "https://forms.google.com/"
+    },
+    {
+        "id": "survey-004",
+        "title": "3학년 학습환경 설문조사",
+        "description": "3학년 학습환경 개선을 위한 설문입니다.",
+        "grade": [3],
+        "deadline": "2026-09-12",
+        "status": "active",
+        "url": "https://forms.google.com/"
+    },
+    {
+        "id": "survey-005",
+        "title": "지난 학교축제 만족도 조사",
+        "description": "지난 학교축제에 대한 학생들의 의견을 확인합니다.",
+        "grade": [1, 2, 3],
+        "deadline": "2026-08-30",
+        "status": "closed",
+        "url": "https://forms.google.com/"
+    }
+]
