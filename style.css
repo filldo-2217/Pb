@@ -1027,3 +1027,57 @@ body {
         flex-wrap: wrap;
     }
 }
+
+/* 내가 만든 설문 표시 */
+
+.my-survey {
+    color: #1a73e8;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+
+/* 삭제 버튼 */
+
+.btn-delete {
+    height: 32px;
+
+    padding: 0 11px;
+
+    border: 1px solid #f1c4c1;
+
+    border-radius: 6px;
+
+    background: #fff;
+
+    color: #d93025;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: .15s;
+}
+
+.btn-delete:hover {
+    background: #fce8e6;
+
+    border-color: #d93025;
+}
+
+
+@media (max-width: 700px) {
+
+    .survey-actions {
+        flex-wrap: wrap;
+    }
+
+    .btn-delete,
+    .btn-qr,
+    .btn-participate {
+        flex: 1;
+    }
+
+}
