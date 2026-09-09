@@ -623,7 +623,7 @@ surveyForm.addEventListener(
             console.error(error);
 
             showFormError(
-                "설문 등록에 실패했습니다. 잠시 후 다시 시도해주세요."
+                `등록 실패: ${error.message}`
             );
 
             submitSurvey.disabled = false;
