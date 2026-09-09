@@ -8,10 +8,10 @@
 ===================================================== */
 
 const SUPABASE_URL =
-    "여기에_프로젝트_URL";
+    "https://yvpjbqsjsszderhhdnwv.supabase.co";
 
 const SUPABASE_ANON_KEY =
-    "여기에_PUBLISHABLE_KEY";
+    "sb_publishable_ivsAYNav68Zpd3e1uYBpLw_OEtIuhkO";
 
 
 const supabaseClient =
