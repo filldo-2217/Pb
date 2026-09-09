@@ -8,7 +8,7 @@
    1. SUPABASE 설정
 ===================================================== */
 
-const SUPABASE_URL = "https://yvpjbqsjsszderhhdnwv.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://yvpjbqsjsszderhhdnwv.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ivsAYNav68Zpd3e1uYBpLw_OEtIuhkO";
 
 
