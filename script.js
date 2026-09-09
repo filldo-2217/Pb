@@ -1,25 +1,28 @@
 /* =====================================================
    SCHOOL SURVEY
-   Supabase + JavaScript
 ===================================================== */
 
 
 /* =====================================================
-   1. SUPABASE 설정
+   1. SUPABASE
 ===================================================== */
 
-const SUPABASE_URL = "https://yvpjbqsjsszderhhdnwv.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_ivsAYNav68Zpd3e1uYBpLw_OEtIuhkO";
+const SUPABASE_URL =
+    "여기에_프로젝트_URL";
+
+const SUPABASE_ANON_KEY =
+    "여기에_PUBLISHABLE_KEY";
 
 
-const supabaseClient = supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-);
+const supabaseClient =
+    supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_ANON_KEY
+    );
 
 
 /* =====================================================
-   2. 전역 변수
+   2. VARIABLES
 ===================================================== */
 
 let surveys = [];
@@ -32,77 +35,109 @@ let currentQrUrl = "";
 
 
 /* =====================================================
-   3. HTML 요소
+   3. ELEMENTS
 ===================================================== */
 
 const surveyList =
-    document.getElementById("surveyList");
+    document.getElementById(
+        "surveyList"
+    );
 
 const surveyCount =
-    document.getElementById("surveyCount");
+    document.getElementById(
+        "surveyCount"
+    );
 
 const emptyState =
-    document.getElementById("emptyState");
+    document.getElementById(
+        "emptyState"
+    );
 
 const searchInput =
-    document.getElementById("searchInput");
+    document.getElementById(
+        "searchInput"
+    );
 
 const filterButtons =
-    document.querySelectorAll(".filter-btn");
+    document.querySelectorAll(
+        ".filter-btn"
+    );
 
 const addModal =
-    document.getElementById("addModal");
+    document.getElementById(
+        "addModal"
+    );
 
 const openAddSurvey =
-    document.getElementById("openAddSurvey");
+    document.getElementById(
+        "openAddSurvey"
+    );
 
 const closeAddSurvey =
-    document.getElementById("closeAddSurvey");
+    document.getElementById(
+        "closeAddSurvey"
+    );
 
 const surveyForm =
-    document.getElementById("surveyForm");
+    document.getElementById(
+        "surveyForm"
+    );
 
 const formError =
-    document.getElementById("formError");
+    document.getElementById(
+        "formError"
+    );
 
 const submitSurvey =
-    document.getElementById("submitSurvey");
+    document.getElementById(
+        "submitSurvey"
+    );
 
 const qrModal =
-    document.getElementById("qrModal");
+    document.getElementById(
+        "qrModal"
+    );
 
 const closeQr =
-    document.getElementById("closeQr");
+    document.getElementById(
+        "closeQr"
+    );
 
 const downloadQr =
-    document.getElementById("downloadQr");
+    document.getElementById(
+        "downloadQr"
+    );
 
 const qrTitle =
-    document.getElementById("qrTitle");
+    document.getElementById(
+        "qrTitle"
+    );
 
 const qrCodeContainer =
-    document.getElementById("qrcode");
+    document.getElementById(
+        "qrcode"
+    );
 
 const toast =
-    document.getElementById("toast");
+    document.getElementById(
+        "toast"
+    );
 
 
 /* =====================================================
-   4. 페이지 시작
+   4. START
 ===================================================== */
 
 document.addEventListener(
     "DOMContentLoaded",
     () => {
-
         loadSurveys();
-
     }
 );
 
 
 /* =====================================================
-   5. DB에서 설문 불러오기
+   5. LOAD SURVEYS
 ===================================================== */
 
 async function loadSurveys() {
@@ -117,22 +152,32 @@ async function loadSurveys() {
     const {
         data,
         error
-    } = await supabaseClient
-        .from("surveys")
-        .select("*")
-        .order("created_at", {
-            ascending: false
-        });
+    } =
+        await supabaseClient
+            .from("surveys")
+            .select(
+                "id,title,description,grades,deadline,status,survey_url,created_at"
+            )
+            .order(
+                "created_at",
+                {
+                    ascending: false
+                }
+            );
 
 
     if (error) {
 
-        console.error(error);
+        console.error(
+            "Supabase 오류:",
+            error
+        );
 
         surveyList.innerHTML = "";
 
         showError(
-            "설문을 불러오지 못했습니다. Supabase 설정을 확인해주세요."
+            "설문을 불러오지 못했습니다: " +
+            error.message
         );
 
         return;
@@ -146,40 +191,61 @@ async function loadSurveys() {
 
 
 /* =====================================================
-   6. 설문 표시
+   6. RENDER
 ===================================================== */
 
 function renderSurveys() {
 
     let filteredSurveys =
-        surveys.filter(survey => {
+        surveys.filter(
+            survey => {
 
-            const matchesGrade =
-                currentGrade === "all" ||
-                survey.grades.includes(
-                    Number(currentGrade)
+                const matchesGrade =
+                    currentGrade === "all" ||
+                    (
+                        Array.isArray(
+                            survey.grades
+                        ) &&
+                        survey.grades.includes(
+                            Number(
+                                currentGrade
+                            )
+                        )
+                    );
+
+
+                const searchText =
+                    currentSearch
+                        .toLowerCase()
+                        .trim();
+
+
+                const matchesSearch =
+                    !searchText ||
+                    (
+                        survey.title &&
+                        survey.title
+                            .toLowerCase()
+                            .includes(
+                                searchText
+                            )
+                    ) ||
+                    (
+                        survey.description &&
+                        survey.description
+                            .toLowerCase()
+                            .includes(
+                                searchText
+                            )
+                    );
+
+
+                return (
+                    matchesGrade &&
+                    matchesSearch
                 );
-
-
-            const searchText =
-                currentSearch
-                    .toLowerCase()
-                    .trim();
-
-
-            const matchesSearch =
-                !searchText ||
-                survey.title
-                    .toLowerCase()
-                    .includes(searchText) ||
-                (survey.description || "")
-                    .toLowerCase()
-                    .includes(searchText);
-
-
-            return matchesGrade && matchesSearch;
-
-        });
+            }
+        );
 
 
     surveyCount.textContent =
@@ -189,23 +255,30 @@ function renderSurveys() {
     surveyList.innerHTML = "";
 
 
-    if (filteredSurveys.length === 0) {
+    if (
+        filteredSurveys.length === 0
+    ) {
 
-        emptyState.classList.remove("hidden");
+        emptyState.classList.remove(
+            "hidden"
+        );
 
         return;
-
     }
 
 
-    emptyState.classList.add("hidden");
+    emptyState.classList.add(
+        "hidden"
+    );
 
 
     filteredSurveys.forEach(
         survey => {
 
             surveyList.appendChild(
-                createSurveyCard(survey)
+                createSurveyCard(
+                    survey
+                )
             );
 
         }
@@ -214,26 +287,43 @@ function renderSurveys() {
 
 
 /* =====================================================
-   7. 설문 카드 생성
+   7. CREATE CARD
 ===================================================== */
 
-function createSurveyCard(survey) {
+function createSurveyCard(
+    survey
+) {
 
     const card =
-        document.createElement("article");
+        document.createElement(
+            "article"
+        );
 
-    card.className = "survey-card";
+
+    card.className =
+        "survey-card";
 
 
     const closed =
-        isClosed(survey.deadline);
+        isClosed(
+            survey.deadline
+        );
 
 
     const grades =
-        survey.grades
-            .sort((a, b) => a - b)
-            .map(g => `${g}학년`)
-            .join(" · ");
+        Array.isArray(
+            survey.grades
+        )
+            ? survey.grades
+                .sort(
+                    (a, b) => a - b
+                )
+                .map(
+                    grade =>
+                        `${grade}학년`
+                )
+                .join(" · ")
+            : "전체";
 
 
     const statusText =
@@ -249,7 +339,33 @@ function createSurveyCard(survey) {
 
 
     const deadline =
-        formatDate(survey.deadline);
+        formatDate(
+            survey.deadline
+        );
+
+
+    /*
+       이 브라우저에서
+       해당 설문을 만든 적이 있는지 확인
+    */
+
+    const myToken =
+        localStorage.getItem(
+            `survey_owner_${survey.id}`
+        );
+
+
+    const deleteButton =
+        myToken
+            ? `
+                <button
+                    class="btn-delete"
+                    data-action="delete"
+                >
+                    삭제
+                </button>
+            `
+            : "";
 
 
     card.innerHTML = `
@@ -266,16 +382,30 @@ function createSurveyCard(survey) {
                     ${statusText}
                 </span>
 
+                ${
+                    myToken
+                        ? `
+                            <span class="my-survey">
+                                내가 등록함
+                            </span>
+                        `
+                        : ""
+                }
+
             </div>
 
 
             <h2 class="survey-title">
-                ${escapeHTML(survey.title)}
+                ${escapeHTML(
+                    survey.title
+                )}
             </h2>
 
 
             <p class="survey-description">
-                ${escapeHTML(survey.description || "")}
+                ${escapeHTML(
+                    survey.description || ""
+                )}
             </p>
 
 
@@ -288,6 +418,8 @@ function createSurveyCard(survey) {
 
         <div class="survey-actions">
 
+            ${deleteButton}
+
             <button
                 class="btn-qr"
                 data-action="qr"
@@ -297,11 +429,23 @@ function createSurveyCard(survey) {
 
 
             <button
-                class="btn-participate ${closed ? "disabled" : ""}"
+                class="btn-participate ${
+                    closed
+                        ? "disabled"
+                        : ""
+                }"
                 data-action="participate"
-                ${closed ? "disabled" : ""}
+                ${
+                    closed
+                        ? "disabled"
+                        : ""
+                }
             >
-                ${closed ? "마감됨" : "참여하기"}
+                ${
+                    closed
+                        ? "마감됨"
+                        : "참여하기"
+                }
             </button>
 
         </div>
@@ -309,15 +453,11 @@ function createSurveyCard(survey) {
     `;
 
 
+    /* QR */
+
     const qrButton =
         card.querySelector(
             '[data-action="qr"]'
-        );
-
-
-    const participateButton =
-        card.querySelector(
-            '[data-action="participate"]'
         );
 
 
@@ -332,6 +472,14 @@ function createSurveyCard(survey) {
 
         }
     );
+
+
+    /* 참여 */
+
+    const participateButton =
+        card.querySelector(
+            '[data-action="participate"]'
+        );
 
 
     participateButton.addEventListener(
@@ -352,12 +500,36 @@ function createSurveyCard(survey) {
     );
 
 
+    /* 삭제 */
+
+    const deleteBtn =
+        card.querySelector(
+            '[data-action="delete"]'
+        );
+
+
+    if (deleteBtn) {
+
+        deleteBtn.addEventListener(
+            "click",
+            () => {
+
+                deleteSurvey(
+                    survey
+                );
+
+            }
+        );
+
+    }
+
+
     return card;
 }
 
 
 /* =====================================================
-   8. 검색
+   8. SEARCH
 ===================================================== */
 
 searchInput.addEventListener(
@@ -374,7 +546,7 @@ searchInput.addEventListener(
 
 
 /* =====================================================
-   9. 학년 필터
+   9. GRADE FILTER
 ===================================================== */
 
 filterButtons.forEach(
@@ -392,7 +564,9 @@ filterButtons.forEach(
                 );
 
 
-                button.classList.add("active");
+                button.classList.add(
+                    "active"
+                );
 
 
                 currentGrade =
@@ -409,7 +583,7 @@ filterButtons.forEach(
 
 
 /* =====================================================
-   10. 설문 추가 모달
+   10. ADD MODAL
 ===================================================== */
 
 openAddSurvey.addEventListener(
@@ -433,12 +607,14 @@ closeAddSurvey.addEventListener(
 );
 
 
-document.querySelector(
-    "#addModal .modal-backdrop"
-).addEventListener(
-    "click",
-    closeAddModal
-);
+document
+    .querySelector(
+        "#addModal .modal-backdrop"
+    )
+    .addEventListener(
+        "click",
+        closeAddModal
+    );
 
 
 function closeAddModal() {
@@ -453,12 +629,11 @@ function closeAddModal() {
     formError.classList.add(
         "hidden"
     );
-
 }
 
 
 /* =====================================================
-   11. 설문 등록
+   11. ADD SURVEY
 ===================================================== */
 
 surveyForm.addEventListener(
@@ -473,25 +648,23 @@ surveyForm.addEventListener(
         );
 
 
-        /* 제목 */
-
         const title =
             document
-                .getElementById("surveyTitle")
+                .getElementById(
+                    "surveyTitle"
+                )
                 .value
                 .trim();
 
-
-        /* 설명 */
 
         const description =
             document
-                .getElementById("surveyDescription")
+                .getElementById(
+                    "surveyDescription"
+                )
                 .value
                 .trim();
 
-
-        /* 학년 */
 
         const gradeInputs =
             document.querySelectorAll(
@@ -504,28 +677,30 @@ surveyForm.addEventListener(
                 gradeInputs
             ).map(
                 input =>
-                    Number(input.value)
+                    Number(
+                        input.value
+                    )
             );
 
 
-        /* 마감일 */
-
         const deadline =
             document
-                .getElementById("surveyDeadline")
+                .getElementById(
+                    "surveyDeadline"
+                )
                 .value;
 
 
-        /* URL */
-
         const surveyUrl =
             document
-                .getElementById("surveyUrl")
+                .getElementById(
+                    "surveyUrl"
+                )
                 .value
                 .trim();
 
 
-        /* 유효성 검사 */
+        /* 검사 */
 
         if (!title) {
 
@@ -534,29 +709,26 @@ surveyForm.addEventListener(
             );
 
             return;
-
         }
 
 
         if (!description) {
 
             showFormError(
-                "설명 내용을 입력해주세요."
+                "설명을 입력해주세요."
             );
 
             return;
-
         }
 
 
         if (grades.length === 0) {
 
             showFormError(
-                "대상 학년을 하나 이상 선택해주세요."
+                "대상 학년을 선택해주세요."
             );
 
             return;
-
         }
 
 
@@ -567,7 +739,6 @@ surveyForm.addEventListener(
             );
 
             return;
-
         }
 
 
@@ -578,13 +749,17 @@ surveyForm.addEventListener(
             );
 
             return;
-
         }
 
 
-        /* 버튼 상태 */
+        /* 만든 사람 전용 토큰 */
 
-        submitSurvey.disabled = true;
+        const creatorToken =
+            crypto.randomUUID();
+
+
+        submitSurvey.disabled =
+            true;
 
         submitSurvey.textContent =
             "등록하는 중...";
@@ -595,53 +770,75 @@ surveyForm.addEventListener(
         const {
             data,
             error
-        } = await supabaseClient
-            .from("surveys")
-            .insert([
-                {
-                    title: title,
+        } =
+            await supabaseClient
+                .from("surveys")
+                .insert({
+                    title:
+                        title,
 
-                    description: description,
+                    description:
+                        description,
 
-                    grades: grades,
+                    grades:
+                        grades,
 
-                    deadline: deadline,
+                    deadline:
+                        deadline,
 
-                    status: "active",
+                    status:
+                        "active",
 
-                    survey_url: surveyUrl
-                }
-            ])
-            .select()
-            .single();
+                    survey_url:
+                        surveyUrl,
 
+                    creator_token:
+                        creatorToken
+                })
+                .select(
+                    "id,title,description,grades,deadline,status,survey_url,created_at"
+                )
+                .single();
 
-        /* 오류 */
 
         if (error) {
 
-            console.error(error);
-
-            showFormError(
-                `등록 실패: ${error.message}`
+            console.error(
+                "등록 실패:",
+                error
             );
 
-            submitSurvey.disabled = false;
+
+            showFormError(
+                "등록 실패: " +
+                error.message
+            );
+
+
+            submitSurvey.disabled =
+                false;
 
             submitSurvey.textContent =
                 "설문 등록하기";
 
             return;
-
         }
 
 
-        /* 성공 */
+        /*
+           이 브라우저에
+           "내가 만든 설문"이라는 기록 저장
+        */
 
-        surveys.unshift(data);
+        localStorage.setItem(
+            `survey_owner_${data.id}`,
+            creatorToken
+        );
 
 
-        renderSurveys();
+        /* 목록 갱신 */
+
+        await loadSurveys();
 
 
         surveyForm.reset();
@@ -650,7 +847,8 @@ surveyForm.addEventListener(
         closeAddModal();
 
 
-        submitSurvey.disabled = false;
+        submitSurvey.disabled =
+            false;
 
         submitSurvey.textContent =
             "설문 등록하기";
@@ -665,7 +863,112 @@ surveyForm.addEventListener(
 
 
 /* =====================================================
-   12. QR 코드
+   12. DELETE SURVEY
+===================================================== */
+
+async function deleteSurvey(
+    survey
+) {
+
+    const token =
+        localStorage.getItem(
+            `survey_owner_${survey.id}`
+        );
+
+
+    if (!token) {
+
+        showToast(
+            "이 설문을 삭제할 권한이 없습니다."
+        );
+
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            `"${survey.title}"\n\n정말 삭제하시겠습니까?\n삭제하면 다시 복구할 수 없습니다.`
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .rpc(
+                "delete_my_survey",
+                {
+                    p_id:
+                        survey.id,
+
+                    p_token:
+                        token
+                }
+            );
+
+
+    if (error) {
+
+        console.error(
+            "삭제 오류:",
+            error
+        );
+
+
+        showToast(
+            "삭제 실패: " +
+            error.message
+        );
+
+        return;
+    }
+
+
+    if (!data) {
+
+        showToast(
+            "삭제 권한이 없습니다."
+        );
+
+        return;
+    }
+
+
+    /* 브라우저에서도 제거 */
+
+    localStorage.removeItem(
+        `survey_owner_${survey.id}`
+    );
+
+
+    /* 화면에서도 제거 */
+
+    surveys =
+        surveys.filter(
+            item =>
+                item.id !==
+                survey.id
+        );
+
+
+    renderSurveys();
+
+
+    showToast(
+        "설문이 삭제되었습니다."
+    );
+}
+
+
+/* =====================================================
+   13. QR
 ===================================================== */
 
 function openQrModal(
@@ -688,11 +991,14 @@ function openQrModal(
     new QRCode(
         qrCodeContainer,
         {
-            text: url,
+            text:
+                url,
 
-            width: 220,
+            width:
+                220,
 
-            height: 220,
+            height:
+                220,
 
             correctLevel:
                 QRCode.CorrectLevel.M
@@ -716,12 +1022,14 @@ closeQr.addEventListener(
 );
 
 
-document.querySelector(
-    "#qrModal .modal-backdrop"
-).addEventListener(
-    "click",
-    closeQrModal
-);
+document
+    .querySelector(
+        "#qrModal .modal-backdrop"
+    )
+    .addEventListener(
+        "click",
+        closeQrModal
+    );
 
 
 function closeQrModal() {
@@ -732,12 +1040,11 @@ function closeQrModal() {
 
     document.body.style.overflow =
         "";
-
 }
 
 
 /* =====================================================
-   13. QR PNG 저장
+   14. QR DOWNLOAD
 ===================================================== */
 
 downloadQr.addEventListener(
@@ -757,12 +1064,13 @@ downloadQr.addEventListener(
             );
 
             return;
-
         }
 
 
         const link =
-            document.createElement("a");
+            document.createElement(
+                "a"
+            );
 
 
         link.download =
@@ -782,10 +1090,12 @@ downloadQr.addEventListener(
 
 
 /* =====================================================
-   14. 날짜
+   15. DATE
 ===================================================== */
 
-function formatDate(dateString) {
+function formatDate(
+    dateString
+) {
 
     if (!dateString) {
         return "-";
@@ -794,18 +1104,23 @@ function formatDate(dateString) {
 
     const date =
         new Date(
-            dateString + "T00:00:00"
+            dateString +
+            "T00:00:00"
         );
 
 
     return (
         date.getFullYear()
-        + "-"
-        + String(
+        +
+        "-"
+        +
+        String(
             date.getMonth() + 1
         ).padStart(2, "0")
-        + "-"
-        + String(
+        +
+        "-"
+        +
+        String(
             date.getDate()
         ).padStart(2, "0")
     );
@@ -813,10 +1128,12 @@ function formatDate(dateString) {
 
 
 /* =====================================================
-   15. 마감 확인
+   16. CLOSED
 ===================================================== */
 
-function isClosed(deadline) {
+function isClosed(
+    deadline
+) {
 
     if (!deadline) {
         return false;
@@ -837,7 +1154,8 @@ function isClosed(deadline) {
 
     const end =
         new Date(
-            deadline + "T23:59:59"
+            deadline +
+            "T23:59:59"
         );
 
 
@@ -846,10 +1164,12 @@ function isClosed(deadline) {
 
 
 /* =====================================================
-   16. URL 검사
+   17. URL
 ===================================================== */
 
-function isValidUrl(value) {
+function isValidUrl(
+    value
+) {
 
     try {
 
@@ -871,25 +1191,44 @@ function isValidUrl(value) {
 
 
 /* =====================================================
-   17. HTML 보안 처리
+   18. SECURITY
 ===================================================== */
 
-function escapeHTML(value) {
+function escapeHTML(
+    value
+) {
 
     return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 }
 
 
 /* =====================================================
-   18. 에러
+   19. ERROR
 ===================================================== */
 
-function showFormError(message) {
+function showFormError(
+    message
+) {
 
     formError.textContent =
         message;
@@ -900,26 +1239,38 @@ function showFormError(message) {
 }
 
 
-function showError(message) {
+function showError(
+    message
+) {
 
     surveyList.innerHTML = `
-        <div class="empty-state">
-            <h3>불러오지 못했습니다.</h3>
-            <p>${escapeHTML(message)}</p>
-        </div>
-    `;
 
+        <div class="empty-state">
+
+            <h3>
+                불러오지 못했습니다.
+            </h3>
+
+            <p>
+                ${escapeHTML(message)}
+            </p>
+
+        </div>
+
+    `;
 }
 
 
 /* =====================================================
-   19. 토스트
+   20. TOAST
 ===================================================== */
 
 let toastTimer;
 
 
-function showToast(message) {
+function showToast(
+    message
+) {
 
     toast.textContent =
         message;
