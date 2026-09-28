@@ -1298,3 +1298,14 @@ function showToast(
             2500
         );
 }
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js")
+            .then(() => {
+                console.log("Service Worker 등록 완료");
+            })
+            .catch(error => {
+                console.error("Service Worker 등록 실패:", error);
+            });
+    });
+}
