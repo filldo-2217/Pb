@@ -1,1 +1,22 @@
-
+{
+  "name": "학교 설문조사",
+  "short_name": "학교 설문조사",
+  "description": "학교 설문을 등록하고 참여할 수 있는 설문조사 서비스",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
