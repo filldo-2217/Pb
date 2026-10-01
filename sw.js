@@ -1,4 +1,4 @@
-const CACHE_NAME = "school-survey-v3";
+const CACHE_NAME = "school-survey-v6";
 const FILES_TO_CACHE = ["./", "./index.html", "./style.css", "./script.js", "./manifest.json"];
 
 self.addEventListener("install", event => {
