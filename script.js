@@ -111,7 +111,7 @@ $("teacherBtn").onclick = () => {
 async function loadAll() {
   $("surveyList").innerHTML = `<div class="empty">불러오는 중...</div>`;
   const { data, error } = await db.from("surveys")
-    .select("id,title,description,grades,deadline,status,questions,created_at")
+    .select("id,title,description,grades,deadline,status,questions,created_at,is_teacher")
     .order("created_at", { ascending: true });
   if (error) { $("surveyList").innerHTML = `<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`; return; }
   surveys = data || [];
@@ -130,15 +130,19 @@ async function loadAll() {
 function renderSurveys() {
   const q = search.toLowerCase().trim();
   const list = surveys.filter(s => {
-    const g = grade === "all" || (Array.isArray(s.grades) && s.grades.includes(+grade));
+    const g = grade === "all" ? true
+      : grade === "teacher" ? !!s.is_teacher
+      : (!s.is_teacher && Array.isArray(s.grades) && s.grades.includes(+grade));
     const t = !q || (s.title || "").toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q);
     return g && t;
   });
   $("surveyCount").textContent = list.length;
   $("emptyState").classList.toggle("hidden", list.length > 0);
+  $("openAdd").classList.toggle("locked", grade === "teacher" && !teacherCode);
   $("surveyList").innerHTML = list.map(s => {
     const id = String(s.id), closed = isClosed(s.deadline), done = doneSet.has(id);
-    const mine = !!localStorage.getItem("survey_owner_" + id);
+    const isT = !!s.is_teacher;
+    const mine = !isT && !!localStorage.getItem("survey_owner_" + id);
     const gs = Array.isArray(s.grades) ? [...s.grades].sort().map(g => g + "학년").join("·") : "전체";
     const qn = (s.questions || []).length;
     const time = s.created_at ? new Date(s.created_at).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
@@ -148,14 +152,15 @@ function renderSurveys() {
     else action = `<button class="btn primary" data-act="join" data-id="${esc(id)}">참여하기</button>`;
     return `
     <div class="msg">
-      <div class="avatar">GH</div>
+      <div class="avatar ${isT ? "teacher" : ""}">${isT ? "T" : "GH"}</div>
       <div class="msg-body">
-        <div class="msg-head"><span class="msg-name">설문봇</span><span class="bot-tag">BOT</span><span class="msg-time">${esc(time)}</span></div>
-        <div class="msg-text">📢 새 설문이 올라왔어요!${mine ? " (내가 등록함)" : ""}</div>
-        <div class="embed ${closed ? "closed" : done ? "done" : ""}">
+        <div class="msg-head"><span class="msg-name">${isT ? "선생님" : "설문봇"}</span><span class="bot-tag ${isT ? "teacher" : ""}">${isT ? "TEACHER" : "BOT"}</span><span class="msg-time">${esc(time)}</span></div>
+        <div class="msg-text">${isT ? "📌 선생님이 올린 설문이에요!" : "📢 새 설문이 올라왔어요!"}${mine ? " (내가 등록함)" : ""}</div>
+        <div class="embed ${isT ? "teacher" : ""} ${closed ? "closed" : done ? "done" : ""}">
           <div class="badges">
             <span class="badge ${closed ? "red" : "ok"}">${closed ? "마감" : "진행 중"}</span>
             ${!closed && s.deadline ? `<span class="badge warn">${dday(s.deadline)}</span>` : ""}
+            ${isT ? `<span class="badge ok">선생님 설문</span>` : ""}
           </div>
           <h3>${esc(s.title)}</h3>
           <p class="desc">${esc(s.description || "")}</p>
@@ -169,7 +174,7 @@ function renderSurveys() {
             ${action}
             ${teacherCode ? `<button class="btn green" data-act="results" data-id="${esc(id)}">📊 결과</button>
               <button class="btn danger" data-act="tdel" data-id="${esc(id)}">삭제</button>` : ""}
-            ${!teacherCode && mine ? `<button class="btn danger" data-act="mdel" data-id="${esc(id)}">삭제</button>` : ""}
+            ${!teacherCode && mine ? `<button class="btn danger" data-act="mdel" data-id="${esc(id)}">🗑️ 내 설문 삭제</button>` : ""}
           </div>
         </div>
       </div>
@@ -197,7 +202,7 @@ async function deleteSurvey(s, asTeacher) {
   if (!confirm(`"${s.title}"\n\n정말 삭제하시겠습니까? (응답도 함께 삭제되며 복구 불가)`)) return;
   const res = asTeacher
     ? await db.rpc("admin_delete_survey", { p_code: teacherCode, p_id: String(s.id) })
-    : await db.rpc("delete_my_survey", { p_id: s.id, p_token: localStorage.getItem("survey_owner_" + s.id) });
+    : await db.rpc("delete_own_survey", { p_id: String(s.id), p_token: localStorage.getItem("survey_owner_" + s.id) || "" });
   if (res.error || !res.data) return toast("삭제 실패: " + (res.error?.message || "권한 없음"));
   localStorage.removeItem("survey_owner_" + s.id);
   toast("삭제되었습니다"); await loadAll();
@@ -206,11 +211,14 @@ async function deleteSurvey(s, asTeacher) {
 /* ===== 10. 설문 만들기 ===== */
 const newQ = () => ({ type: "short", text: "", options: "", required: true });
 $("openAdd").onclick = () => {
+  if (grade === "teacher" && !teacherCode)
+    return toast("선생님 칸은 교사만 올릴 수 있어요. 🔑 교사 로그인을 해주세요");
   builderQs = [newQ()];
   openModal(`
     <h2>새 설문 만들기</h2>
     <p class="muted" style="margin-bottom:14px">장난 설문 금지! 실제로 사용할 설문만 올려주세요.</p>
     <div id="bErr" class="error hidden"></div>
+    ${teacherCode ? `<div class="field"><div class="checks"><label><input type="checkbox" id="bTeacher" ${grade === "teacher" ? "checked" : ""}>👨‍🏫 선생님 칸에 올리기</label></div></div>` : ""}
     <div class="field"><label>설문 제목</label><input id="bTitle" maxlength="100" placeholder="예: 2학기 학교생활 만족도 조사"></div>
     <div class="field"><label>설명</label><textarea id="bDesc" maxlength="300" placeholder="간단한 설명"></textarea></div>
     <div class="field"><label>대상 학년</label>
@@ -257,6 +265,7 @@ async function submitSurvey() {
   const title = $("bTitle").value.trim(), desc = $("bDesc").value.trim();
   const grades = [...document.querySelectorAll('input[name="bg"]:checked')].map(i => +i.value);
   const deadline = $("bDeadline").value;
+  const asTeacher = !!teacherCode && !!$("bTeacher")?.checked;
   if (!title) return err("제목을 입력해주세요.");
   if (!desc) return err("설명을 입력해주세요.");
   if (!grades.length) return err("대상 학년을 선택해주세요.");
@@ -271,13 +280,21 @@ async function submitSurvey() {
     }
     questions.push(o);
   }
-  const token = crypto.randomUUID();
   $("bSubmit").disabled = true;
-  const { data, error } = await db.from("surveys").insert({
-    title, description: desc, grades, deadline, status: "active", survey_url: "", questions, creator_token: token
-  }).select("id").single();
-  if (error) { $("bSubmit").disabled = false; return err("등록 실패: " + error.message); }
-  localStorage.setItem("survey_owner_" + data.id, token);
+  if (asTeacher) {
+    const { data, error } = await db.rpc("teacher_create_survey", {
+      p_code: teacherCode, p_title: title, p_desc: desc, p_grades: grades,
+      p_deadline: deadline, p_questions: questions
+    });
+    if (error || !data) { $("bSubmit").disabled = false; return err("등록 실패: " + (error?.message || "권한 없음")); }
+  } else {
+    const token = crypto.randomUUID();
+    const { data, error } = await db.from("surveys").insert({
+      title, description: desc, grades, deadline, status: "active", survey_url: "", questions, creator_token: token
+    }).select("id").single();
+    if (error) { $("bSubmit").disabled = false; return err("등록 실패: " + error.message); }
+    localStorage.setItem("survey_owner_" + data.id, token);
+  }
   closeModal(); toast("설문이 등록되었습니다"); await loadAll();
 }
 
