@@ -1,813 +1,991 @@
-"use strict";
-
 /* =====================================================
-   1. SUPABASE
+   SCHOOL SURVEY (Discord style)
 ===================================================== */
+
+/* ---------- 1. SUPABASE ---------- */
 const SUPABASE_URL = "https://yvpjbqsjsszderhhdnwv.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ivsAYNav68Zpd3e1uYBpLw_OEtIuhkO";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* ---------- 2. STATE ---------- */
+let surveys = [];
+let counts = {};
+let user = null;
+let isAdmin = false;
+let currentGrade = "all";
+let currentSearch = "";
+let onlyActive = false;
+let currentSurvey = null;
+let currentResponses = [];
+let resultTab = "summary";
+let builderQs = [];
 
-/* =====================================================
-   2. 유틸
-===================================================== */
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const TYPES = {
+    short: "단답형",
+    long: "장문형",
+    single: "객관식 (하나 선택)",
+    multi: "체크박스 (여러 개 선택)",
+    scale: "5점 척도"
+};
+const isChoice = q => q.type === "single" || q.type === "multi";
 
-const esc = v => String(v ?? "").replace(/[&<>"']/g, c => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-));
+/* ---------- 3. HELPERS ---------- */
+const $ = id => document.getElementById(id);
 
-const pad = n => String(n).padStart(2, "0");
-
-function todayStr() {
-    const d = new Date();
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-const isClosed = deadline => !!deadline && deadline < todayStr();
-
-function fmtTime(iso) {
-    return new Date(iso).toLocaleString("ko-KR", {
-        month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit"
-    });
-}
-
-function uuid() {
-    if (crypto.randomUUID) return crypto.randomUUID();
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+function esc(v) {
+    return String(v ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 let toastTimer;
 function showToast(msg) {
-    const t = $("#toast");
+    const t = $("toast");
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
 }
 
+function openModal(id) {
+    $(id).classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+}
+function closeModal(id) {
+    $(id).classList.add("hidden");
+    if (!document.querySelector(".modal:not(.hidden)")) {
+        document.body.style.overflow = "";
+    }
+}
+document.addEventListener("click", e => {
+    const c = e.target.closest("[data-close]");
+    if (c) {
+        const m = c.closest(".modal");
+        if (m) closeModal(m.id);
+    }
+});
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+        const open = [...document.querySelectorAll(".modal:not(.hidden)")].pop();
+        if (open) closeModal(open.id);
+    }
+});
+
 function showErr(id, msg) {
     const el = $(id);
     el.textContent = msg;
     el.classList.remove("hidden");
 }
-const hideErr = id => $(id).classList.add("hidden");
+function hideErr(id) { $(id).classList.add("hidden"); }
 
-const openModal = id => $(id).classList.remove("hidden");
-const closeModal = id => $(id).classList.add("hidden");
-
-document.addEventListener("click", e => {
-    const c = e.target.closest("[data-close]");
-    if (c) c.closest(".modal").classList.add("hidden");
-});
-document.addEventListener("keydown", e => {
-    if (e.key === "Escape") $$(".modal").forEach(m => m.classList.add("hidden"));
-});
-
-/* =====================================================
-   3. 상태
-===================================================== */
-const TYPES = {
-    short: "단답형",
-    long: "장문형",
-    single: "객관식 (하나 선택)",
-    multi: "체크박스 (여러 개)",
-    scale: "5점 척도"
-};
-const isChoice = t => t === "single" || t === "multi";
-
-const VIEWS = {
-    all:   { title: "전체-설문", topic: "현재 올라온 모든 설문" },
-    "1":   { title: "1학년", topic: "1학년 대상 설문" },
-    "2":   { title: "2학년", topic: "2학년 대상 설문" },
-    "3":   { title: "3학년", topic: "3학년 대상 설문" },
-    mine:  { title: "내가-만든-설문", topic: "이 기기에서 등록한 설문 · 결과도 여기서 확인해요" },
-    guide: { title: "이용-안내", topic: "처음이라면 읽어보세요" }
-};
-
-const state = {
-    forms: [],
-    counts: {},
-    view: "all",
-    search: "",
-    profile: loadProfile()
-};
-
-const ownerKey = id => `form_owner_${id}`;
-const answeredKey = id => `form_answered_${id}`;
-const getToken = id => localStorage.getItem(ownerKey(id));
-
-function loadProfile() {
-    try { return JSON.parse(localStorage.getItem("gh_profile")); }
-    catch { return null; }
+function todayStr(offsetDays = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return d.getFullYear() + "-" +
+        String(d.getMonth() + 1).padStart(2, "0") + "-" +
+        String(d.getDate()).padStart(2, "0");
+}
+function isClosed(s) {
+    if (s.status === "closed") return true;
+    return new Date() > new Date(s.deadline + "T23:59:59");
+}
+function ddayText(deadline) {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    const d = Math.round((new Date(deadline + "T00:00:00") - t) / 86400000);
+    if (d < 0) return "";
+    if (d === 0) return "오늘 마감";
+    return "D-" + d;
+}
+function formatDateTime(iso) {
+    return new Date(iso).toLocaleString("ko-KR", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+    });
+}
+function surveyUrl(s) {
+    return location.origin + location.pathname + "?s=" + s.id;
 }
 
-/* =====================================================
-   4. 시작
-===================================================== */
-document.addEventListener("DOMContentLoaded", async () => {
-    renderUserPanel();
-    $("#cDeadline").min = todayStr();
-    resetBuilder();
-    await loadForms();
-    if (!state.profile) openProfile();
-});
-
-/* =====================================================
-   5. 데이터 불러오기
-===================================================== */
-async function loadForms() {
-    $("#feed").innerHTML = `<div class="empty"><p>설문을 불러오는 중입니다...</p></div>`;
-
-    const [formsRes, countRes] = await Promise.all([
-        db.from("forms")
-            .select("id,title,description,grades,deadline,questions,created_at")
-            .order("created_at", { ascending: false }),
-        db.rpc("form_counts")
-    ]);
-
-    if (formsRes.error) {
-        console.error(formsRes.error);
-        $("#feed").innerHTML = `
-            <div class="empty">
-                <h3>불러오지 못했습니다</h3>
-                <p>${esc(formsRes.error.message)}<br>Supabase에서 supabase.sql을 실행했는지 확인해주세요.</p>
-            </div>`;
-        return;
+/* ---------- 4. AUTH (교사) ---------- */
+async function refreshAuth() {
+    const { data } = await sb.auth.getSession();
+    user = data?.session?.user || null;
+    isAdmin = false;
+    if (user) {
+        const { data: ok } = await sb.rpc("is_admin");
+        isAdmin = ok === true;
     }
-
-    state.forms = formsRes.data || [];
-    state.counts = {};
-    (countRes.data || []).forEach(r => { state.counts[r.fid] = Number(r.cnt); });
-
-    renderFeed();
-    renderBadges();
+    updateAuthUI();
 }
 
-/* =====================================================
-   6. 사이드바 / 채널
-===================================================== */
-$$(".channel").forEach(btn =>
-    btn.addEventListener("click", () => setView(btn.dataset.view))
-);
-
-function setView(view) {
-    state.view = view;
-    $$(".channel").forEach(b => b.classList.toggle("active", b.dataset.view === view));
-    $("#channelTitle").textContent = VIEWS[view].title;
-    $("#channelTopic").textContent = VIEWS[view].topic;
-    closeNav();
-    renderFeed();
-    $("#feed").scrollTop = 0;
+function updateAuthUI() {
+    $("authBtn").textContent = user ? "로그아웃" : "교사 로그인";
+    $("adminBadge").classList.toggle("hidden", !isAdmin);
+    $("openBuilder").classList.toggle("hidden", !isAdmin);
 }
 
-function renderBadges() {
-    const open = state.forms.filter(f => !isClosed(f.deadline));
-    const set = (k, n) => { const el = $(`[data-badge="${k}"]`); if (el) el.textContent = n > 0 ? n : ""; };
-    set("all", open.length);
-    [1, 2, 3].forEach(g => set(String(g), open.filter(f => f.grades.includes(g)).length));
-    set("mine", state.forms.filter(f => getToken(f.id)).length);
-}
-
-function openNav() { $("#navWrap").classList.add("open"); $("#navOverlay").classList.add("show"); }
-function closeNav() { $("#navWrap").classList.remove("open"); $("#navOverlay").classList.remove("show"); }
-$("#menuBtn").addEventListener("click", openNav);
-$("#navOverlay").addEventListener("click", closeNav);
-
-$("#searchInput").addEventListener("input", e => {
-    state.search = e.target.value;
-    renderFeed();
+$("authBtn").addEventListener("click", async () => {
+    if (user) {
+        await sb.auth.signOut();
+        await refreshAuth();
+        await loadSurveys();
+        showToast("로그아웃 되었습니다");
+    } else {
+        hideErr("authError");
+        openModal("authModal");
+    }
 });
 
-/* =====================================================
-   7. 피드 렌더링
-===================================================== */
-function renderFeed() {
-    const feed = $("#feed");
+$("authForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    hideErr("authError");
+    const btn = $("authSubmit");
+    btn.disabled = true;
+    btn.textContent = "로그인 중...";
 
-    if (state.view === "guide") {
-        feed.innerHTML = guideHTML();
-        return;
-    }
-
-    const q = state.search.trim().toLowerCase();
-
-    const list = state.forms.filter(f => {
-        if (state.view === "mine" && !getToken(f.id)) return false;
-        if (["1", "2", "3"].includes(state.view) && !f.grades.includes(Number(state.view))) return false;
-        if (q && !(`${f.title} ${f.description}`).toLowerCase().includes(q)) return false;
-        return true;
+    const { error } = await sb.auth.signInWithPassword({
+        email: $("authEmail").value.trim(),
+        password: $("authPw").value
     });
 
-    if (!list.length) {
-        feed.innerHTML = `
-            <div class="empty">
-                <h3>설문이 없습니다</h3>
-                <p>다른 채널을 선택하거나 직접 설문을 만들어보세요.</p>
+    if (error) {
+        showErr("authError", "로그인 실패: 이메일 또는 비밀번호를 확인해주세요.");
+    } else {
+        await refreshAuth();
+        if (!isAdmin) {
+            await sb.auth.signOut();
+            await refreshAuth();
+            showErr("authError", "교사 권한이 없는 계정입니다.");
+        } else {
+            $("authForm").reset();
+            closeModal("authModal");
+            await loadSurveys();
+            showToast("교사 모드로 로그인했습니다");
+        }
+    }
+    btn.disabled = false;
+    btn.textContent = "로그인";
+});
+
+/* ---------- 5. LOAD ---------- */
+async function loadSurveys() {
+    $("surveyList").innerHTML =
+        `<div class="empty-state"><p>설문을 불러오는 중입니다...</p></div>`;
+
+    const { data, error } = await sb
+        .from("school_surveys")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        $("surveyList").innerHTML = `
+            <div class="empty-state">
+                <h3>불러오지 못했습니다</h3>
+                <p>${esc(error.message)}</p>
             </div>`;
         return;
     }
 
-    feed.innerHTML = list.map(cardHTML).join("");
+    surveys = data || [];
+    counts = {};
+
+    if (isAdmin) {
+        const { data: c } = await sb.rpc("survey_response_counts");
+        (c || []).forEach(r => { counts[r.survey_id] = Number(r.cnt); });
+    }
+    renderSurveys();
 }
 
-function cardHTML(f) {
-    const closed = isClosed(f.deadline);
-    const mine = !!getToken(f.id);
-    const done = !!localStorage.getItem(answeredKey(f.id));
-    const grades = [...f.grades].sort((a, b) => a - b).map(g => `${g}학년`).join(" · ");
-    const n = state.counts[f.id] || 0;
+/* ---------- 6. RENDER ---------- */
+function renderSurveys() {
+    const q = currentSearch.toLowerCase().trim();
 
-    const btnText = done ? "참여 완료" : closed ? "마감됨" : "참여하기";
+    const list = surveys
+        .filter(s => {
+            const gradeOk = currentGrade === "all" ||
+                (Array.isArray(s.grades) && s.grades.includes(Number(currentGrade)));
+            const searchOk = !q ||
+                (s.title || "").toLowerCase().includes(q) ||
+                (s.description || "").toLowerCase().includes(q);
+            const activeOk = !onlyActive || !isClosed(s);
+            return gradeOk && searchOk && activeOk;
+        })
+        .sort((a, b) => Number(isClosed(a)) - Number(isClosed(b)));
 
-    return `
-    <article class="msg">
+    $("surveyCount").textContent = list.length;
+    $("surveyList").innerHTML = "";
+
+    if (list.length === 0) {
+        $("emptyState").classList.remove("hidden");
+        return;
+    }
+    $("emptyState").classList.add("hidden");
+    list.forEach(s => $("surveyList").appendChild(createCard(s)));
+}
+
+function createCard(s) {
+    const closed = isClosed(s);
+    const grades = (s.grades || []).slice().sort((a, b) => a - b).map(g => g + "학년").join(" · ");
+    const dday = closed ? "" : ddayText(s.deadline);
+    const qCount = Array.isArray(s.questions) ? s.questions.length : 0;
+
+    const adminBtns = isAdmin ? `
+        <button class="btn btn-success btn-sm" data-action="results" data-id="${s.id}">결과 보기</button>
+        <button class="btn btn-secondary btn-sm" data-action="duplicate" data-id="${s.id}">복제</button>
+        <button class="btn btn-danger btn-sm" data-action="delete" data-id="${s.id}">삭제</button>
+    ` : "";
+
+    const el = document.createElement("article");
+    el.className = "msg";
+    el.innerHTML = `
         <div class="avatar">설</div>
         <div class="msg-body">
             <div class="msg-head">
-                <span class="author">설문봇</span>
-                <span class="tag">BOT</span>
-                <time>${esc(fmtTime(f.created_at))}</time>
-                ${mine ? `<span class="mine-tag">내가 등록함</span>` : ""}
+                <span class="msg-author">설문봇</span>
+                <span class="tag-bot">BOT</span>
+                <span class="msg-time">${formatDateTime(s.created_at)}</span>
             </div>
-
-            <div class="embed ${closed ? "closed" : ""}">
-                <div class="embed-status">${closed ? "● 마감됨" : "● 진행 중"}</div>
-                <h3 class="embed-title">${esc(f.title)}</h3>
-                <p class="embed-desc">${esc(f.description)}</p>
-
+            <div class="embed" style="--accent:${closed ? "#f23f42" : "#23a559"}">
+                <div class="embed-meta">
+                    <span class="chip">${esc(grades)}</span>
+                    <span class="${closed ? "st-closed" : "st-active"}">● ${closed ? "마감" : "진행 중"}</span>
+                    ${dday ? `<span class="dday">${dday}</span>` : ""}
+                </div>
+                <h2 class="embed-title">${esc(s.title)}</h2>
+                <p class="embed-desc">${esc(s.description)}</p>
                 <div class="embed-fields">
-                    <div><b>대상</b><span>${esc(grades)}</span></div>
-                    <div><b>마감일</b><span>${esc(f.deadline)}</span></div>
-                    <div><b>질문</b><span>${f.questions.length}개</span></div>
-                    <div><b>참여</b><span>${n}명</span></div>
+                    <div><b>마감일</b>${esc(s.deadline)}</div>
+                    <div><b>문항</b>${qCount}개</div>
+                    ${isAdmin ? `<div><b>응답</b>${counts[s.id] || 0}명</div>` : ""}
                 </div>
-
                 <div class="embed-actions">
-                    <button class="btn btn-primary" data-action="answer" data-id="${f.id}"
-                        ${closed || done ? "disabled" : ""}>${btnText}</button>
-                    ${mine ? `
-                        <button class="btn btn-secondary" data-action="results" data-id="${f.id}">결과 보기</button>
-                        <button class="btn btn-danger" data-action="delete" data-id="${f.id}">삭제</button>
-                    ` : ""}
+                    <button class="btn btn-primary btn-sm" data-action="participate" data-id="${s.id}" ${closed ? "disabled" : ""}>
+                        ${closed ? "마감됨" : "참여하기"}
+                    </button>
+                    <button class="btn btn-secondary btn-sm" data-action="qr" data-id="${s.id}">QR</button>
+                    ${adminBtns}
                 </div>
             </div>
         </div>
-    </article>`;
+    `;
+    return el;
 }
 
-function guideHTML() {
-    const steps = [
-        ["내 정보 입력", "처음 접속하면 학년·반·번호를 입력해요. 왼쪽 아래 내 이름을 눌러 언제든 고칠 수 있어요."],
-        ["설문 참여", "채널에서 설문을 고르고 '참여하기'를 눌러 사이트 안에서 바로 답변해요. 한 설문에 같은 번호로는 한 번만 참여할 수 있어요."],
-        ["설문 만들기", "'+ 설문 만들기'로 누구나 설문을 올릴 수 있어요. 장난이 아닌 진짜로 사용할 설문만 올려주세요."],
-        ["결과 확인", "내가 만든 설문은 '결과 보기'에서 통계와 학년·반·번호별 응답을 보고 CSV로 저장할 수 있어요."]
-    ];
-    return `
-    <article class="msg">
-        <div class="avatar green">안</div>
-        <div class="msg-body">
-            <div class="msg-head"><span class="author">안내봇</span><span class="tag">BOT</span></div>
-            <div class="embed">
-                <h3 class="embed-title" style="color:var(--text-strong)">학교 설문조사 이용 안내</h3>
-                ${steps.map((s, i) => `
-                    <p class="embed-desc"><b style="color:var(--text-strong)">${i + 1}. ${esc(s[0])}</b><br>${esc(s[1])}</p>
-                `).join("")}
-            </div>
-        </div>
-    </article>`;
-}
-
-/* 카드 버튼 (이벤트 위임) */
-$("#feed").addEventListener("click", e => {
+$("surveyList").addEventListener("click", e => {
     const btn = e.target.closest("[data-action]");
-    if (!btn || btn.disabled) return;
-    const id = btn.dataset.id;
-    if (btn.dataset.action === "answer") openAnswer(id);
-    if (btn.dataset.action === "results") openResults(id);
-    if (btn.dataset.action === "delete") deleteForm(id);
+    if (!btn) return;
+    const s = surveys.find(x => x.id === btn.dataset.id);
+    if (!s) return;
+    switch (btn.dataset.action) {
+        case "participate": openFill(s); break;
+        case "qr": openQr(s); break;
+        case "results": openResults(s); break;
+        case "duplicate": openBuilder(s); break;
+        case "delete": deleteSurvey(s); break;
+    }
 });
 
-/* =====================================================
-   8. 내 정보 (학년 / 반 / 번호)
-===================================================== */
-function identityFields(prefix, prof) {
-    const g = prof?.grade ?? "", c = prof?.classNo ?? "", n = prof?.studentNo ?? "";
-    return `
-    <div class="identity">
-        <label class="field"><span>학년</span>
-            <select id="${prefix}Grade">
-                <option value="">선택</option>
-                ${[1, 2, 3].map(x => `<option value="${x}" ${x == g ? "selected" : ""}>${x}학년</option>`).join("")}
-            </select>
-        </label>
-        <label class="field"><span>반</span>
-            <input id="${prefix}Class" type="number" min="1" max="30" inputmode="numeric" placeholder="예: 3" value="${esc(c)}">
-        </label>
-        <label class="field"><span>번호</span>
-            <input id="${prefix}No" type="number" min="1" max="50" inputmode="numeric" placeholder="예: 12" value="${esc(n)}">
-        </label>
-    </div>`;
+/* ---------- 7. SEARCH / FILTER ---------- */
+$("searchInput").addEventListener("input", e => {
+    currentSearch = e.target.value;
+    renderSurveys();
+});
+
+document.querySelectorAll("#gradeFilter .pill[data-grade]").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll("#gradeFilter .pill[data-grade]")
+            .forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentGrade = btn.dataset.grade;
+        renderSurveys();
+    });
+});
+
+$("activeOnly").addEventListener("click", e => {
+    onlyActive = !onlyActive;
+    e.currentTarget.classList.toggle("active", onlyActive);
+    renderSurveys();
+});
+
+/* ---------- 8. 설문 참여 (학생) ---------- */
+function loadProfile() {
+    try { return JSON.parse(localStorage.getItem("student_profile")) || {}; }
+    catch { return {}; }
 }
 
-function readIdentity(prefix) {
-    const grade = Number($(`#${prefix}Grade`).value);
-    const classNo = Number($(`#${prefix}Class`).value);
-    const studentNo = Number($(`#${prefix}No`).value);
+function renderQuestion(q, i) {
+    const name = "q_" + q.id;
+    let input = "";
 
-    const ok = [1, 2, 3].includes(grade)
-        && Number.isInteger(classNo) && classNo >= 1 && classNo <= 30
-        && Number.isInteger(studentNo) && studentNo >= 1 && studentNo <= 50;
-
-    return ok ? { grade, classNo, studentNo } : null;
-}
-
-function saveProfile(p) {
-    state.profile = p;
-    localStorage.setItem("gh_profile", JSON.stringify(p));
-    renderUserPanel();
-}
-
-function renderUserPanel() {
-    const p = state.profile;
-    if (p) {
-        $("#userAvatar").textContent = p.classNo;
-        $("#userName").textContent = `${p.grade}학년 ${p.classNo}반 ${p.studentNo}번`;
-        $("#userSub").textContent = "클릭해서 수정";
-    } else {
-        $("#userAvatar").textContent = "?";
-        $("#userName").textContent = "신원 미설정";
-        $("#userSub").textContent = "클릭해서 입력하기";
+    if (q.type === "short") {
+        input = `<input class="text-input" type="text" maxlength="200" placeholder="답변 입력">`;
+    } else if (q.type === "long") {
+        input = `<textarea class="text-input" maxlength="1000" placeholder="답변 입력"></textarea>`;
+    } else if (q.type === "single") {
+        input = `<div class="choice-list">${q.options.map(o => `
+            <label class="choice"><input type="radio" name="${name}" value="${esc(o)}"><span>${esc(o)}</span></label>
+        `).join("")}</div>`;
+    } else if (q.type === "multi") {
+        input = `<div class="choice-list">${q.options.map(o => `
+            <label class="choice"><input type="checkbox" name="${name}" value="${esc(o)}"><span>${esc(o)}</span></label>
+        `).join("")}</div>`;
+    } else if (q.type === "scale") {
+        input = `<div class="scale">
+            <span class="muted small">매우 아니다</span>
+            ${[1, 2, 3, 4, 5].map(n => `
+                <label class="scale-item"><input type="radio" name="${name}" value="${n}"><span>${n}</span></label>
+            `).join("")}
+            <span class="muted small">매우 그렇다</span>
+        </div>`;
     }
+
+    return `
+        <section class="q-card" data-qid="${esc(q.id)}">
+            <h3>${i + 1}. ${esc(q.title)}${q.required ? '<em class="req">*</em>' : ""}</h3>
+            ${input}
+        </section>`;
 }
 
-function openProfile() {
-    $("#profileFields").innerHTML = identityFields("pf", state.profile);
-    hideErr("#profileError");
-    openModal("#profileModal");
-}
-
-$("#userPanel").addEventListener("click", openProfile);
-
-$("#profileForm").addEventListener("submit", e => {
-    e.preventDefault();
-    const id = readIdentity("pf");
-    if (!id) {
-        showErr("#profileError", "학년(1~3), 반(1~30), 번호(1~50)를 정확히 입력해주세요.");
+function openFill(s) {
+    if (isClosed(s)) {
+        showToast("마감된 설문입니다");
         return;
     }
-    saveProfile(id);
-    closeModal("#profileModal");
-    showToast("내 정보가 저장되었습니다.");
+    currentSurvey = s;
+    const p = loadProfile();
+    const gradeOpts = (s.grades || []).slice().sort((a, b) => a - b).map(g =>
+        `<option value="${g}" ${Number(p.grade) === g ? "selected" : ""}>${g}학년</option>`
+    ).join("");
+
+    $("fillTitle").textContent = s.title;
+    $("fillBody").innerHTML = `
+        <p class="muted" style="margin-bottom:14px;white-space:pre-wrap">${esc(s.description)}</p>
+        <form id="fillForm" novalidate>
+            <section class="q-card">
+                <h3>참여자 정보 <em class="req">*</em></h3>
+                <p class="muted small">선생님만 확인할 수 있어요. 정확하게 입력해주세요.</p>
+                <div class="id-grid">
+                    <div><label for="idGrade">학년</label><select id="idGrade">${gradeOpts}</select></div>
+                    <div><label for="idClass">반</label><input id="idClass" type="number" min="1" max="20" inputmode="numeric" value="${esc(p.cls || "")}"></div>
+                    <div><label for="idNo">번호</label><input id="idNo" type="number" min="1" max="50" inputmode="numeric" value="${esc(p.no || "")}"></div>
+                    <div><label for="idName">이름</label><input id="idName" type="text" maxlength="20" value="${esc(p.name || "")}"></div>
+                </div>
+            </section>
+            ${(s.questions || []).map(renderQuestion).join("")}
+            <div id="fillError" class="form-error hidden"></div>
+            <button type="submit" id="fillSubmit" class="btn btn-primary btn-block">제출하기</button>
+        </form>
+    `;
+    openModal("fillModal");
+}
+
+function collectAnswers(form, s) {
+    const answers = {};
+    const missing = [];
+    s.questions.forEach(q => {
+        const sec = form.querySelector(`[data-qid="${q.id}"]`);
+        let v;
+        if (q.type === "short" || q.type === "long") {
+            v = sec.querySelector("input,textarea").value.trim();
+        } else if (q.type === "multi") {
+            v = [...sec.querySelectorAll("input:checked")].map(i => i.value);
+        } else {
+            const c = sec.querySelector("input:checked");
+            v = c ? c.value : "";
+        }
+        const empty = Array.isArray(v) ? v.length === 0 : v === "";
+        if (q.required && empty) {
+            missing.push(q.title);
+            sec.classList.add("invalid");
+        } else {
+            sec.classList.remove("invalid");
+        }
+        answers[q.id] = v;
+    });
+    return { answers, missing };
+}
+
+$("fillBody").addEventListener("submit", async e => {
+    e.preventDefault();
+    const s = currentSurvey;
+    const form = e.target;
+    hideErr("fillError");
+
+    const grade = Number($("idGrade").value);
+    const cls = parseInt($("idClass").value, 10);
+    const no = parseInt($("idNo").value, 10);
+    const name = $("idName").value.trim();
+
+    if (!(cls >= 1 && cls <= 20)) return showErr("fillError", "반을 1~20 사이로 입력해주세요.");
+    if (!(no >= 1 && no <= 50)) return showErr("fillError", "번호를 1~50 사이로 입력해주세요.");
+    if (!name) return showErr("fillError", "이름을 입력해주세요.");
+
+    const { answers, missing } = collectAnswers(form, s);
+    if (missing.length) {
+        return showErr("fillError", `필수 질문에 답해주세요 (${missing.length}개 남음)`);
+    }
+
+    const btn = $("fillSubmit");
+    btn.disabled = true;
+    btn.textContent = "제출하는 중...";
+
+    const { error } = await sb.from("survey_responses").insert({
+        survey_id: s.id,
+        grade: grade,
+        class_no: cls,
+        student_no: no,
+        name: name,
+        answers: answers
+    });
+
+    if (error) {
+        console.error(error);
+        let msg = "제출 실패: " + error.message;
+        if (error.code === "23505") {
+            msg = `${grade}학년 ${cls}반 ${no}번은 이미 제출했어요. 수정이 필요하면 선생님께 말씀드리세요.`;
+        } else if (error.code === "42501") {
+            msg = "마감되었거나 참여할 수 없는 설문입니다.";
+        }
+        showErr("fillError", msg);
+        btn.disabled = false;
+        btn.textContent = "제출하기";
+        return;
+    }
+
+    localStorage.setItem("student_profile", JSON.stringify({ grade, cls, no, name }));
+
+    $("fillBody").innerHTML = `
+        <div class="success-box">
+            <div class="success-icon">✓</div>
+            <h3>제출 완료!</h3>
+            <p class="muted">${grade}학년 ${cls}반 ${no}번 ${esc(name)} 님, 참여해주셔서 감사합니다.</p>
+            <button class="btn btn-primary btn-block" data-close>닫기</button>
+        </div>`;
 });
 
-/* =====================================================
-   9. 설문 만들기
-===================================================== */
-let builder = [];
-
-const defaultQuestion = () => ({ type: "short", title: "", required: true, options: "" });
-
-function resetBuilder() {
-    builder = [defaultQuestion()];
-    renderBuilder();
+/* ---------- 9. 설문 만들기 (교사) ---------- */
+function newQ(type = "short") {
+    return {
+        id: "q" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        type,
+        title: "",
+        required: true,
+        options: (type === "single" || type === "multi") ? ["옵션 1", "옵션 2"] : []
+    };
 }
 
-function renderBuilder() {
-    $("#qList").innerHTML = builder.map((q, i) => `
-        <div class="q-block" data-i="${i}">
-            <div class="q-top">
-                <span class="q-num">${i + 1}</span>
-                <input class="q-title" type="text" maxlength="200" placeholder="질문을 입력하세요" value="${esc(q.title)}">
-                <select class="q-type">
-                    ${Object.entries(TYPES).map(([k, v]) =>
-                        `<option value="${k}" ${k === q.type ? "selected" : ""}>${v}</option>`).join("")}
-                </select>
-            </div>
-            <textarea class="q-options ${isChoice(q.type) ? "" : "hidden"}" rows="3"
-                placeholder="선택지를 한 줄에 하나씩 입력하세요">${esc(q.options)}</textarea>
-            <div class="q-bottom">
-                <label class="check"><input type="checkbox" class="q-req" ${q.required ? "checked" : ""}> 필수 응답</label>
-                <button type="button" class="link-danger q-del" ${builder.length <= 1 ? "disabled" : ""}>삭제</button>
-            </div>
-        </div>
-    `).join("");
+function renderBuilderQs() {
+    $("qList").innerHTML = builderQs.map((q, i) => {
+        const typeOpts = Object.entries(TYPES).map(([k, v]) =>
+            `<option value="${k}" ${q.type === k ? "selected" : ""}>${v}</option>`).join("");
+
+        let extra = "";
+        if (isChoice(q)) {
+            extra = `<div class="opt-list">
+                ${q.options.map((o, oi) => `
+                    <div class="opt-row">
+                        <span class="opt-mark">${q.type === "single" ? "○" : "☐"}</span>
+                        <input type="text" class="q-opt" data-oi="${oi}" value="${esc(o)}" maxlength="100">
+                        <button type="button" class="icon-btn" data-act="rmopt" data-oi="${oi}" aria-label="옵션 삭제">×</button>
+                    </div>`).join("")}
+                <button type="button" class="link-btn" data-act="addopt">+ 옵션 추가</button>
+            </div>`;
+        } else if (q.type === "scale") {
+            extra = `<p class="muted small" style="margin-bottom:8px">1점(매우 아니다) ~ 5점(매우 그렇다)</p>`;
+        }
+
+        return `
+            <div class="q-edit" data-i="${i}">
+                <div class="q-edit-top">
+                    <input type="text" class="q-title" placeholder="질문 ${i + 1}" value="${esc(q.title)}" maxlength="200">
+                    <select class="q-type">${typeOpts}</select>
+                </div>
+                ${extra}
+                <div class="q-edit-foot">
+                    <label class="switch-label"><input type="checkbox" class="q-req" ${q.required ? "checked" : ""}> 필수</label>
+                    <span class="spacer"></span>
+                    <button type="button" class="icon-btn" data-act="up" aria-label="위로">↑</button>
+                    <button type="button" class="icon-btn" data-act="down" aria-label="아래로">↓</button>
+                    <button type="button" class="icon-btn" data-act="remove" aria-label="질문 삭제">🗑</button>
+                </div>
+            </div>`;
+    }).join("");
 }
 
-function syncBuilder() {
-    builder = $$("#qList .q-block").map(el => ({
-        type: $(".q-type", el).value,
-        title: $(".q-title", el).value,
-        required: $(".q-req", el).checked,
-        options: $(".q-options", el).value
-    }));
+function openBuilder(template = null) {
+    $("builderForm").reset();
+    hideErr("builderError");
+
+    if (template) {
+        $("bTitle").value = template.title + " (복사)";
+        $("bDesc").value = template.description || "";
+        document.querySelectorAll('input[name="bgrade"]').forEach(c => {
+            c.checked = (template.grades || []).includes(Number(c.value));
+        });
+        builderQs = (template.questions || []).map(q => ({
+            ...q,
+            id: newQ().id + Math.random().toString(36).slice(2, 4),
+            options: [...(q.options || [])]
+        }));
+    } else {
+        builderQs = [newQ("single")];
+    }
+    if (builderQs.length === 0) builderQs = [newQ("short")];
+
+    $("bDeadline").value = todayStr(7);
+    renderBuilderQs();
+    openModal("builderModal");
 }
 
-$("#qList").addEventListener("change", e => {
-    if (e.target.classList.contains("q-type")) {
-        syncBuilder();
-        renderBuilder();
+$("openBuilder").addEventListener("click", () => openBuilder());
+
+$("builderForm").addEventListener("click", e => {
+    const add = e.target.closest("[data-addtype]");
+    if (add) {
+        if (builderQs.length >= 30) return showToast("질문은 최대 30개까지 가능합니다");
+        builderQs.push(newQ(add.dataset.addtype));
+        renderBuilderQs();
+        const items = $("qList").querySelectorAll(".q-edit");
+        items[items.length - 1]?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 });
 
-$("#qList").addEventListener("click", e => {
-    const del = e.target.closest(".q-del");
-    if (!del) return;
-    syncBuilder();
-    const i = Number(del.closest(".q-block").dataset.i);
-    builder.splice(i, 1);
-    renderBuilder();
+$("qList").addEventListener("input", e => {
+    const box = e.target.closest(".q-edit");
+    if (!box) return;
+    const q = builderQs[Number(box.dataset.i)];
+    if (e.target.classList.contains("q-title")) q.title = e.target.value;
+    else if (e.target.classList.contains("q-opt")) q.options[Number(e.target.dataset.oi)] = e.target.value;
 });
 
-$("#addQ").addEventListener("click", () => {
-    syncBuilder();
-    if (builder.length >= 30) { showToast("질문은 최대 30개까지 추가할 수 있어요."); return; }
-    builder.push(defaultQuestion());
-    renderBuilder();
-    const blocks = $$("#qList .q-block");
-    blocks[blocks.length - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+$("qList").addEventListener("change", e => {
+    const box = e.target.closest(".q-edit");
+    if (!box) return;
+    const q = builderQs[Number(box.dataset.i)];
+    if (e.target.classList.contains("q-type")) {
+        q.type = e.target.value;
+        if (isChoice(q) && q.options.length < 2) q.options = ["옵션 1", "옵션 2"];
+        renderBuilderQs();
+    } else if (e.target.classList.contains("q-req")) {
+        q.required = e.target.checked;
+    }
 });
 
-function openCreate() {
-    hideErr("#createError");
-    openModal("#createModal");
-}
-$("#openCreate").addEventListener("click", openCreate);
-$("#railAdd").addEventListener("click", () => { closeNav(); openCreate(); });
+$("qList").addEventListener("click", e => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const box = btn.closest(".q-edit");
+    const i = Number(box.dataset.i);
+    const q = builderQs[i];
 
-$("#createForm").addEventListener("submit", async e => {
+    switch (btn.dataset.act) {
+        case "up":
+            if (i > 0) [builderQs[i - 1], builderQs[i]] = [builderQs[i], builderQs[i - 1]];
+            break;
+        case "down":
+            if (i < builderQs.length - 1) [builderQs[i + 1], builderQs[i]] = [builderQs[i], builderQs[i + 1]];
+            break;
+        case "remove":
+            if (builderQs.length > 1) builderQs.splice(i, 1);
+            else showToast("질문은 최소 1개 필요합니다");
+            break;
+        case "addopt":
+            if (q.options.length < 20) q.options.push("옵션 " + (q.options.length + 1));
+            break;
+        case "rmopt":
+            if (q.options.length > 2) q.options.splice(Number(btn.dataset.oi), 1);
+            else showToast("옵션은 최소 2개 필요합니다");
+            break;
+    }
+    renderBuilderQs();
+});
+
+$("builderForm").addEventListener("submit", async e => {
     e.preventDefault();
-    hideErr("#createError");
-    syncBuilder();
+    hideErr("builderError");
 
-    const title = $("#cTitle").value.trim();
-    const description = $("#cDesc").value.trim();
-    const grades = $$('input[name="cGrade"]:checked').map(i => Number(i.value));
-    const deadline = $("#cDeadline").value;
+    const title = $("bTitle").value.trim();
+    const description = $("bDesc").value.trim();
+    const grades = [...document.querySelectorAll('input[name="bgrade"]:checked')].map(c => Number(c.value));
+    const deadline = $("bDeadline").value;
 
-    if (!title) return showErr("#createError", "설문 제목을 입력해주세요.");
-    if (!description) return showErr("#createError", "설명을 입력해주세요.");
-    if (!grades.length) return showErr("#createError", "대상 학년을 선택해주세요.");
-    if (!deadline) return showErr("#createError", "마감일을 선택해주세요.");
-    if (deadline < todayStr()) return showErr("#createError", "마감일은 오늘 이후여야 해요.");
+    if (!title) return showErr("builderError", "설문 제목을 입력해주세요.");
+    if (grades.length === 0) return showErr("builderError", "대상 학년을 선택해주세요.");
+    if (!deadline) return showErr("builderError", "마감일을 선택해주세요.");
+    if (deadline < todayStr()) return showErr("builderError", "마감일은 오늘 이후여야 합니다.");
+    if (builderQs.length === 0) return showErr("builderError", "질문을 1개 이상 추가해주세요.");
 
     const questions = [];
-    for (let i = 0; i < builder.length; i++) {
-        const q = builder[i];
-        const qt = q.title.trim();
-        if (!qt) return showErr("#createError", `${i + 1}번 질문을 입력해주세요.`);
-
-        const item = { id: `q${i + 1}`, type: q.type, title: qt, required: q.required };
-
-        if (isChoice(q.type)) {
-            const opts = [...new Set(q.options.split("\n").map(s => s.trim()).filter(Boolean))];
-            if (opts.length < 2) return showErr("#createError", `${i + 1}번 질문의 선택지를 2개 이상 입력해주세요.`);
-            if (opts.length > 20) return showErr("#createError", `${i + 1}번 질문의 선택지는 최대 20개예요.`);
+    for (let i = 0; i < builderQs.length; i++) {
+        const q = builderQs[i];
+        const t = q.title.trim();
+        if (!t) return showErr("builderError", `${i + 1}번 질문의 제목을 입력해주세요.`);
+        const item = { id: q.id, type: q.type, title: t, required: !!q.required, options: [] };
+        if (isChoice(q)) {
+            const opts = [...new Set(q.options.map(o => o.trim()).filter(Boolean))];
+            if (opts.length < 2) return showErr("builderError", `${i + 1}번 질문은 서로 다른 옵션이 2개 이상 필요합니다.`);
             item.options = opts;
         }
         questions.push(item);
     }
 
-    const token = uuid();
-    const btn = $("#createSubmit");
+    const btn = $("builderSubmit");
     btn.disabled = true;
     btn.textContent = "등록하는 중...";
 
-    const { data, error } = await db.from("forms")
-        .insert({ title, description, grades, deadline, questions, creator_token: token })
-        .select("id")
-        .single();
+    const { error } = await sb.from("school_surveys").insert({
+        title, description, grades, deadline, questions, status: "active"
+    });
 
     btn.disabled = false;
     btn.textContent = "설문 등록하기";
 
     if (error) {
         console.error(error);
-        return showErr("#createError", "등록 실패: " + error.message);
+        return showErr("builderError", "등록 실패: " + error.message);
     }
-
-    localStorage.setItem(ownerKey(data.id), token);
-
-    $("#createForm").reset();
-    resetBuilder();
-    closeModal("#createModal");
-    await loadForms();
-    showToast("설문이 등록되었습니다.");
+    closeModal("builderModal");
+    await loadSurveys();
+    showToast("설문이 등록되었습니다");
 });
 
-/* =====================================================
-   10. 설문 참여
-===================================================== */
-let currentForm = null;
+/* ---------- 10. 삭제 (교사) ---------- */
+async function deleteSurvey(s) {
+    if (!isAdmin) return;
+    if (!confirm(`"${s.title}"\n\n설문과 모든 응답이 삭제됩니다.\n정말 삭제하시겠습니까? (복구 불가)`)) return;
 
-function openAnswer(id) {
-    const f = state.forms.find(x => x.id === id);
-    if (!f || isClosed(f.deadline)) return;
-    currentForm = f;
-
-    $("#answerTitle").textContent = f.title;
-    $("#answerDesc").textContent = f.description;
-
-    $("#answerBody").innerHTML = `
-        <form id="answerForm" novalidate>
-            <div class="identity-box">
-                <h4>참여자 정보</h4>
-                ${identityFields("ans", state.profile)}
-                <p class="muted">대상 학년: ${[...f.grades].sort().join(", ")}학년 · 같은 번호로는 한 번만 참여할 수 있어요.</p>
-            </div>
-
-            ${f.questions.map(questionHTML).join("")}
-
-            <div class="form-error hidden" id="answerError"></div>
-            <button type="submit" class="btn btn-primary wide" id="answerSubmit">제출하기</button>
-        </form>`;
-
-    $("#answerForm").addEventListener("submit", submitAnswer);
-    openModal("#answerModal");
-    $("#answerBody").scrollTop = 0;
+    const { data, error } = await sb.from("school_surveys").delete().eq("id", s.id).select();
+    if (error || !data || data.length === 0) {
+        console.error(error);
+        return showToast("삭제 실패: 권한을 확인해주세요");
+    }
+    surveys = surveys.filter(x => x.id !== s.id);
+    renderSurveys();
+    showToast("설문이 삭제되었습니다");
 }
 
-function questionHTML(q) {
-    const req = q.required ? `<span class="req">*</span>` : "";
-    let input = "";
-
-    if (q.type === "short") {
-        input = `<input type="text" name="${q.id}" maxlength="200" autocomplete="off">`;
-    } else if (q.type === "long") {
-        input = `<textarea name="${q.id}" maxlength="1000"></textarea>`;
-    } else if (q.type === "single") {
-        input = q.options.map(o => `
-            <label class="opt"><input type="radio" name="${q.id}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("");
-    } else if (q.type === "multi") {
-        input = q.options.map(o => `
-            <label class="opt"><input type="checkbox" name="${q.id}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join("");
-    } else if (q.type === "scale") {
-        input = `
-            <div class="scale">
-                ${[1, 2, 3, 4, 5].map(n => `
-                    <label><input type="radio" name="${q.id}" value="${n}"><span>${n}</span></label>`).join("")}
-            </div>
-            <div class="scale-guide"><span>전혀 아니다</span><span>매우 그렇다</span></div>`;
-    }
-
-    return `<div class="q-ask"><h4>${esc(q.title)}${req}</h4>${input}</div>`;
+/* ---------- 11. 결과 (교사) ---------- */
+function sortedResponses() {
+    return currentResponses.slice().sort((a, b) =>
+        a.grade - b.grade || a.class_no - b.class_no || a.student_no - b.student_no);
 }
 
-function collectAnswer(form, q) {
-    const name = q.id;
-    if (q.type === "short" || q.type === "long") {
-        return form.querySelector(`[name="${name}"]`).value.trim();
-    }
-    if (q.type === "single") {
-        const r = form.querySelector(`input[name="${name}"]:checked`);
-        return r ? r.value : "";
-    }
-    if (q.type === "scale") {
-        const r = form.querySelector(`input[name="${name}"]:checked`);
-        return r ? Number(r.value) : "";
-    }
-    if (q.type === "multi") {
-        return [...form.querySelectorAll(`input[name="${name}"]:checked`)].map(i => i.value);
-    }
-    return "";
+async function openResults(s) {
+    if (!isAdmin) return;
+    currentSurvey = s;
+    resultTab = "summary";
+    $("resultTitle").textContent = s.title;
+    $("resultBody").innerHTML = `<p class="muted">불러오는 중...</p>`;
+    openModal("resultModal");
+    await fetchResponses();
+    renderResults();
 }
 
-async function submitAnswer(e) {
-    e.preventDefault();
-    const form = e.target;
-    const f = currentForm;
-    hideErr("#answerError");
-
-    const identity = readIdentity("ans");
-    if (!identity) return showErr("#answerError", "학년, 반, 번호를 정확히 입력해주세요.");
-    if (!f.grades.includes(identity.grade)) {
-        return showErr("#answerError", `이 설문은 ${[...f.grades].sort().join(", ")}학년 대상이에요.`);
-    }
-
-    const answers = {};
-    for (let i = 0; i < f.questions.length; i++) {
-        const q = f.questions[i];
-        const v = collectAnswer(form, q);
-        const empty = v === "" || (Array.isArray(v) && v.length === 0);
-        if (q.required && empty) return showErr("#answerError", `${i + 1}번 질문은 필수예요.`);
-        if (!empty) answers[q.id] = v;
-    }
-
-    const btn = $("#answerSubmit");
-    btn.disabled = true;
-    btn.textContent = "제출하는 중...";
-
-    const { error } = await db.from("form_responses").insert({
-        form_id: f.id,
-        grade: identity.grade,
-        class_no: identity.classNo,
-        student_no: identity.studentNo,
-        answers
-    });
-
-    btn.disabled = false;
-    btn.textContent = "제출하기";
-
+async function fetchResponses() {
+    const { data, error } = await sb
+        .from("survey_responses")
+        .select("*")
+        .eq("survey_id", currentSurvey.id)
+        .order("created_at", { ascending: true })
+        .limit(5000);
     if (error) {
         console.error(error);
-        if (error.code === "23505") {
-            localStorage.setItem(answeredKey(f.id), "1");
-            return showErr("#answerError", `${identity.grade}학년 ${identity.classNo}반 ${identity.studentNo}번은 이미 참여했어요.`);
-        }
-        if (error.code === "42501") {
-            return showErr("#answerError", "마감되었거나 참여할 수 없는 설문이에요.");
-        }
-        return showErr("#answerError", "제출 실패: " + error.message);
+        showToast("응답을 불러오지 못했습니다");
+        currentResponses = [];
+    } else {
+        currentResponses = data || [];
     }
-
-    localStorage.setItem(answeredKey(f.id), "1");
-    saveProfile(identity);
-    closeModal("#answerModal");
-    showToast("참여해주셔서 감사합니다!");
-    await loadForms();
 }
 
-/* =====================================================
-   11. 결과 보기 (만든 사람 전용)
-===================================================== */
-let currentResults = null;
+function renderResults() {
+    const s = currentSurvey;
+    const closed = isClosed(s);
+    const tabs = [["summary", "요약"], ["list", "응답자"], ["tools", "미제출 확인"]];
 
-async function openResults(id) {
-    const f = state.forms.find(x => x.id === id);
-    const token = getToken(id);
-    if (!f || !token) return showToast("이 설문의 결과를 볼 권한이 없습니다.");
+    let content = "";
+    if (resultTab === "summary") content = summaryHTML();
+    else if (resultTab === "list") content = listHTML();
+    else content = toolsHTML();
 
-    $("#resultTitle").textContent = f.title;
-    $("#resultSub").textContent = "";
-    $("#resultBody").innerHTML = `<p class="muted">불러오는 중...</p>`;
-    openModal("#resultModal");
-
-    const { data, error } = await db.rpc("get_responses", { p_id: id, p_token: token });
-
-    if (error) {
-        console.error(error);
-        $("#resultBody").innerHTML = `<p class="muted">불러오지 못했습니다: ${esc(error.message)}</p>`;
-        return;
-    }
-
-    const rows = data || [];
-    currentResults = { form: f, rows };
-    $("#resultSub").textContent = `총 ${rows.length}명 참여`;
-
-    const byGrade = [1, 2, 3].map(g => [g, rows.filter(r => r.grade === g).length])
-        .filter(([g]) => f.grades.includes(g));
-
-    $("#resultBody").innerHTML = `
-        <div class="stat-row">
-            <div class="stat"><b>${rows.length}</b><span>전체 참여</span></div>
-            ${byGrade.map(([g, n]) => `<div class="stat"><b>${n}</b><span>${g}학년</span></div>`).join("")}
+    $("resultBody").innerHTML = `
+        <div class="result-top">
+            <span class="total">총 ${currentResponses.length}명 응답</span>
+            <button class="btn btn-secondary btn-sm" data-act="refresh">새로고침</button>
+            <button class="btn btn-secondary btn-sm" data-act="csv">CSV 저장</button>
+            <button class="btn ${s.status === "closed" ? "btn-success" : "btn-danger"} btn-sm" data-act="toggle">
+                ${s.status === "closed" ? "다시 열기" : "지금 마감"}
+            </button>
         </div>
-
-        <div class="section-title">항목별 요약</div>
-        ${f.questions.map((q, i) => summaryHTML(q, i, rows)).join("")}
-
-        <div class="section-title">
-            <span>개별 응답 (${rows.length})</span>
-            <button class="btn btn-green" id="csvBtn">CSV 저장</button>
+        ${closed && s.status !== "closed" ? `<p class="muted small" style="margin-bottom:10px">마감일이 지나 자동으로 마감된 설문입니다.</p>` : ""}
+        <div class="tabs">
+            ${tabs.map(([k, v]) => `<button class="tab ${resultTab === k ? "active" : ""}" data-tab="${k}">${v}</button>`).join("")}
         </div>
-        ${rows.length ? tableHTML(f, rows) : `<p class="muted">아직 응답이 없어요.</p>`}
+        ${content}
     `;
-
-    const csvBtn = $("#csvBtn");
-    if (csvBtn) csvBtn.addEventListener("click", downloadCsv);
 }
 
-function fmtAnswer(v) {
-    if (Array.isArray(v)) return v.join(", ");
-    return v === undefined || v === null ? "" : String(v);
+function summaryHTML() {
+    const s = currentSurvey;
+    const rs = currentResponses;
+    if (!rs.length) return `<div class="empty-state small"><p>아직 응답이 없습니다</p></div>`;
+
+    const byClass = {};
+    rs.forEach(r => {
+        const k = r.grade + "-" + r.class_no;
+        byClass[k] = (byClass[k] || 0) + 1;
+    });
+    const chips = Object.keys(byClass)
+        .sort((a, b) => {
+            const [ag, ac] = a.split("-").map(Number);
+            const [bg, bc] = b.split("-").map(Number);
+            return ag - bg || ac - bc;
+        })
+        .map(k => {
+            const [g, c] = k.split("-");
+            return `<span class="chip">${g}학년 ${c}반 · ${byClass[k]}명</span>`;
+        }).join("");
+
+    const qs = (s.questions || []).map((q, i) => `
+        <section class="q-card">
+            <h3>${i + 1}. ${esc(q.title)}</h3>
+            ${questionSummary(q)}
+        </section>`).join("");
+
+    return `<div class="chips">${chips}</div>${qs}`;
 }
 
-function barsHTML(entries, total) {
-    return entries.map(([label, n]) => {
-        const p = total ? Math.round(n / total * 100) : 0;
-        return `
+function barRow(label, n, total) {
+    const p = total ? Math.round(n / total * 100) : 0;
+    return `
         <div class="bar-row">
             <div class="bar-label"><span>${esc(label)}</span><span>${n}명 · ${p}%</span></div>
             <div class="bar"><i style="width:${p}%"></i></div>
         </div>`;
+}
+
+function questionSummary(q) {
+    const rs = currentResponses;
+    const total = rs.length;
+
+    if (isChoice(q)) {
+        const cnt = {};
+        q.options.forEach(o => { cnt[o] = 0; });
+        rs.forEach(r => {
+            const v = r.answers?.[q.id];
+            (Array.isArray(v) ? v : [v]).forEach(x => {
+                if (x !== "" && x != null) cnt[x] = (cnt[x] || 0) + 1;
+            });
+        });
+        return Object.entries(cnt).map(([o, n]) => barRow(o, n, total)).join("");
+    }
+
+    if (q.type === "scale") {
+        const nums = rs.map(r => Number(r.answers?.[q.id])).filter(n => n >= 1 && n <= 5);
+        const avg = nums.length ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2) : "-";
+        const dist = [1, 2, 3, 4, 5].map(n => barRow(n + "점", nums.filter(x => x === n).length, nums.length)).join("");
+        return `<div class="avg">${avg} <small>/ 5점 (${nums.length}명 응답)</small></div>${dist}`;
+    }
+
+    const items = rs
+        .filter(r => (r.answers?.[q.id] || "") !== "")
+        .map(r => `<li><b>${esc(r.name)}</b>${esc(r.answers[q.id])}</li>`).join("");
+    return items ? `<ul class="text-answers">${items}</ul>` : `<p class="muted small">응답 없음</p>`;
+}
+
+function listHTML() {
+    const s = currentSurvey;
+    const rs = sortedResponses();
+    if (!rs.length) return `<div class="empty-state small"><p>아직 응답이 없습니다</p></div>`;
+
+    return rs.map(r => {
+        const body = (s.questions || []).map((q, i) => {
+            const v = r.answers?.[q.id];
+            const text = Array.isArray(v) ? v.join(", ") : (v ?? "");
+            return `<div class="resp-q"><b>${i + 1}. ${esc(q.title)}</b>${text === "" ? '<span class="muted">(응답 없음)</span>' : esc(text)}</div>`;
+        }).join("");
+        return `
+            <details class="resp">
+                <summary>${r.grade}학년 ${r.class_no}반 ${r.student_no}번 ${esc(r.name)}<span>${formatDateTime(r.created_at)}</span></summary>
+                <div class="resp-body">
+                    ${body}
+                    <button class="btn btn-danger btn-sm" data-act="delresp" data-id="${r.id}">이 응답 삭제</button>
+                </div>
+            </details>`;
     }).join("");
 }
 
-function summaryHTML(q, i, rows) {
-    const answered = rows
-        .map(r => ({ r, v: r.answers?.[q.id] }))
-        .filter(({ v }) => v !== undefined && v !== "" && !(Array.isArray(v) && !v.length));
+function toolsHTML() {
+    const gradeOpts = (currentSurvey.grades || []).slice().sort((a, b) => a - b)
+        .map(g => `<option value="${g}">${g}학년</option>`).join("");
+    return `
+        <div class="q-card">
+            <h3>반별 미제출 번호 확인</h3>
+            <p class="muted small" style="margin-bottom:10px">학년/반/전체 인원을 입력하면 아직 제출하지 않은 번호를 알려줘요.</p>
+            <div class="tool-row">
+                <div><label>학년</label><select id="mGrade">${gradeOpts}</select></div>
+                <div><label>반</label><input id="mClass" type="number" min="1" max="20" inputmode="numeric"></div>
+                <div><label>전체 인원</label><input id="mTotal" type="number" min="1" max="50" inputmode="numeric"></div>
+                <button class="btn btn-primary btn-sm" data-act="missing">확인</button>
+            </div>
+            <div id="missingOut"></div>
+        </div>`;
+}
 
-    let body = "";
-
-    if (isChoice(q.type)) {
-        const c = new Map(q.options.map(o => [o, 0]));
-        answered.forEach(({ v }) => (Array.isArray(v) ? v : [v]).forEach(x => {
-            if (c.has(x)) c.set(x, c.get(x) + 1);
-        }));
-        body = barsHTML([...c.entries()], answered.length);
-    } else if (q.type === "scale") {
-        const c = new Map([1, 2, 3, 4, 5].map(n => [String(n), 0]));
-        let sum = 0;
-        answered.forEach(({ v }) => { c.set(String(v), (c.get(String(v)) || 0) + 1); sum += Number(v); });
-        const avg = answered.length ? (sum / answered.length).toFixed(2) : "-";
-        body = `<p class="muted" style="margin:0 0 10px">평균 <b style="color:var(--text-strong)">${avg}</b> / 5</p>`
-            + barsHTML([...c.entries()].map(([k, n]) => [`${k}점`, n]), answered.length);
-    } else {
-        body = answered.length
-            ? `<div class="text-answers">${answered.slice(0, 100).map(({ r, v }) =>
-                `<div><small>${r.grade}-${r.class_no}-${r.student_no}</small>${esc(v)}</div>`).join("")}</div>`
-            : `<p class="muted">응답 없음</p>`;
+function checkMissing() {
+    const g = Number($("mGrade").value);
+    const c = parseInt($("mClass").value, 10);
+    const t = parseInt($("mTotal").value, 10);
+    const out = $("missingOut");
+    if (!(c >= 1) || !(t >= 1)) {
+        out.innerHTML = `<p class="muted small">반과 전체 인원을 입력해주세요.</p>`;
+        return;
     }
-
-    return `
-    <div class="result-q">
-        <h4>${i + 1}. ${esc(q.title)} <span class="muted">(${answered.length}명 응답)</span></h4>
-        ${body}
-    </div>`;
-}
-
-function tableHTML(f, rows) {
-    return `
-    <div class="table-wrap">
-        <table>
-            <thead><tr>
-                <th>학년</th><th>반</th><th>번호</th>
-                ${f.questions.map(q => `<th title="${esc(q.title)}">${esc(q.title)}</th>`).join("")}
-                <th>제출시간</th>
-            </tr></thead>
-            <tbody>
-                ${rows.map(r => `<tr>
-                    <td>${r.grade}</td><td>${r.class_no}</td><td>${r.student_no}</td>
-                    ${f.questions.map(q => `<td title="${esc(fmtAnswer(r.answers?.[q.id]))}">${esc(fmtAnswer(r.answers?.[q.id]))}</td>`).join("")}
-                    <td>${esc(fmtTime(r.created_at))}</td>
-                </tr>`).join("")}
-            </tbody>
-        </table>
-    </div>`;
-}
-
-function csvCell(v) {
-    let s = String(v ?? "");
-    if (/^[=+\-@]/.test(s)) s = "'" + s;           // 엑셀 수식 방지
-    return `"${s.replace(/"/g, '""')}"`;
+    const done = new Set(currentResponses.filter(r => r.grade === g && r.class_no === c).map(r => r.student_no));
+    const miss = [];
+    for (let n = 1; n <= t; n++) if (!done.has(n)) miss.push(n);
+    out.innerHTML = miss.length
+        ? `<p class="small">${g}학년 ${c}반 · 제출 ${done.size}명 / 미제출 <b>${miss.length}명</b></p>
+           <div class="missing-nums">${miss.map(n => `<span>${n}번</span>`).join("")}</div>`
+        : `<p class="small" style="color:#3ba55d">🎉 ${g}학년 ${c}반 전원 제출 완료!</p>`;
 }
 
 function downloadCsv() {
-    if (!currentResults) return;
-    const { form, rows } = currentResults;
-
-    const header = ["학년", "반", "번호", ...form.questions.map(q => q.title), "제출시간"];
-    const lines = [header.map(csvCell).join(",")];
-
-    rows.forEach(r => {
-        lines.push([
-            r.grade, r.class_no, r.student_no,
-            ...form.questions.map(q => fmtAnswer(r.answers?.[q.id])),
-            new Date(r.created_at).toLocaleString("ko-KR")
-        ].map(csvCell).join(","));
-    });
-
-    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const s = currentSurvey;
+    const safe = v => {
+        let t = String(v ?? "");
+        if (/^[=+\-@]/.test(t)) t = "'" + t;   // 엑셀 수식 주입 방지
+        return '"' + t.replace(/"/g, '""') + '"';
+    };
+    const head = ["학년", "반", "번호", "이름", "제출시각", ...(s.questions || []).map(q => q.title)];
+    const rows = sortedResponses().map(r => [
+        r.grade, r.class_no, r.student_no, r.name, formatDateTime(r.created_at),
+        ...(s.questions || []).map(q => {
+            const v = r.answers?.[q.id];
+            return Array.isArray(v) ? v.join(", ") : (v ?? "");
+        })
+    ]);
+    const csv = [head, ...rows].map(row => row.map(safe).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${form.title.slice(0, 30)}_결과.csv`;
+    a.download = `${s.title}_결과.csv`;
     a.click();
-    URL.revokeObjectURL(a.href);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-/* =====================================================
-   12. 삭제
-===================================================== */
-async function deleteForm(id) {
-    const f = state.forms.find(x => x.id === id);
-    const token = getToken(id);
-    if (!f || !token) return showToast("삭제 권한이 없습니다.");
-
-    if (!confirm(`"${f.title}"\n\n정말 삭제하시겠습니까?\n응답 데이터도 모두 삭제되며 복구할 수 없습니다.`)) return;
-
-    const { data, error } = await db.rpc("delete_form", { p_id: id, p_token: token });
-
-    if (error) {
-        console.error(error);
-        return showToast("삭제 실패: " + error.message);
+$("resultBody").addEventListener("click", async e => {
+    const tab = e.target.closest("[data-tab]");
+    if (tab) {
+        resultTab = tab.dataset.tab;
+        renderResults();
+        return;
     }
-    if (!data) return showToast("삭제 권한이 없습니다.");
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
 
-    localStorage.removeItem(ownerKey(id));
-    state.forms = state.forms.filter(x => x.id !== id);
-    renderFeed();
-    renderBadges();
-    showToast("설문이 삭제되었습니다.");
+    switch (btn.dataset.act) {
+        case "refresh":
+            await fetchResponses();
+            renderResults();
+            showToast("새로고침 완료");
+            break;
+
+        case "csv":
+            if (!currentResponses.length) return showToast("저장할 응답이 없습니다");
+            downloadCsv();
+            break;
+
+        case "toggle": {
+            const next = currentSurvey.status === "closed" ? "active" : "closed";
+            const { data, error } = await sb.from("school_surveys")
+                .update({ status: next }).eq("id", currentSurvey.id).select();
+            if (error || !data || !data.length) return showToast("변경 실패: 권한을 확인해주세요");
+            currentSurvey.status = next;
+            renderResults();
+            renderSurveys();
+            showToast(next === "closed" ? "설문을 마감했습니다" : "설문을 다시 열었습니다");
+            break;
+        }
+
+        case "delresp": {
+            if (!confirm("이 응답을 삭제할까요?")) return;
+            const { data, error } = await sb.from("survey_responses")
+                .delete().eq("id", btn.dataset.id).select();
+            if (error || !data || !data.length) return showToast("삭제 실패");
+            currentResponses = currentResponses.filter(r => r.id !== btn.dataset.id);
+            counts[currentSurvey.id] = currentResponses.length;
+            renderResults();
+            renderSurveys();
+            showToast("응답을 삭제했습니다");
+            break;
+        }
+
+        case "missing":
+            checkMissing();
+            break;
+    }
+});
+
+/* ---------- 12. QR ---------- */
+function openQr(s) {
+    const url = surveyUrl(s);
+    $("qrTitle").textContent = s.title;
+    $("qrLink").value = url;
+    $("qrcode").innerHTML = "";
+    new QRCode($("qrcode"), {
+        text: url,
+        width: 204,
+        height: 204,
+        correctLevel: QRCode.CorrectLevel.M
+    });
+    openModal("qrModal");
 }
 
-/* =====================================================
-   13. 서비스워커
-===================================================== */
+$("copyLink").addEventListener("click", async () => {
+    const input = $("qrLink");
+    try {
+        await navigator.clipboard.writeText(input.value);
+    } catch {
+        input.select();
+        document.execCommand("copy");
+    }
+    showToast("링크를 복사했습니다");
+});
+
+$("downloadQr").addEventListener("click", () => {
+    const canvas = $("qrcode").querySelector("canvas");
+    if (!canvas) return showToast("QR 코드를 준비하는 중입니다");
+    const a = document.createElement("a");
+    a.download = "school-survey-qr.png";
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+});
+
+/* ---------- 13. START ---------- */
+document.addEventListener("DOMContentLoaded", async () => {
+    await refreshAuth();
+    await loadSurveys();
+
+    // ?s=설문ID 로 들어오면 바로 설문 열기 (QR / 공유 링크)
+    const sid = new URLSearchParams(location.search).get("s");
+    if (sid) {
+        const s = surveys.find(x => x.id === sid);
+        if (!s) showToast("설문을 찾을 수 없습니다");
+        else if (isClosed(s)) showToast("마감된 설문입니다");
+        else openFill(s);
+    }
+});
+
+/* ---------- 14. PWA ---------- */
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js")
+            .then(() => console.log("Service Worker 등록 완료"))
             .catch(err => console.error("Service Worker 등록 실패:", err));
     });
 }
