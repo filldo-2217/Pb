@@ -12,52 +12,50 @@
   <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand"><span class="logo-icon">GH</span><span># 학교-설문조사</span></div>
-    <div class="top-actions">
-      <button id="profileBtn" class="chip"></button>
-      <button id="teacherBtn" class="chip teacher">🔑 교사</button>
+<div class="app">
+  <header class="chan-head">
+    <div class="chan-left">
+      <span class="hash">#</span><b>설문조사</b>
+      <span class="divider"></span>
+      <span class="topic">참여할 수 있는 설문 <b id="surveyCount">0</b>개</span>
+    </div>
+    <div class="chan-right">
+      <div class="search"><input id="searchInput" placeholder="검색" autocomplete="off"><span>🔍</span></div>
+      <button id="profileBtn" class="chip">👤 정보 입력</button>
+      <button id="teacherBtn" class="chip">🔑 교사</button>
     </div>
   </header>
 
-  <main class="container">
-    <div id="teacherBanner" class="banner hidden">🛡️ 교사 모드입니다. 모든 설문의 결과 확인과 삭제가 가능합니다.</div>
+  <div class="filters">
+    <button class="filter-btn active" data-grade="all">전체</button>
+    <button class="filter-btn" data-grade="1">1학년</button>
+    <button class="filter-btn" data-grade="2">2학년</button>
+    <button class="filter-btn" data-grade="3">3학년</button>
+  </div>
 
-    <div class="section-head">
-      <div>
-        <h1>설문 목록</h1>
-        <p class="muted">참여할 수 있는 설문을 확인하세요 · <b id="surveyCount">0</b>개</p>
-      </div>
-      <button id="openAdd" class="btn primary">＋ 설문 만들기</button>
+  <main class="feed" id="feed">
+    <div class="welcome">
+      <div class="welcome-icon">#</div>
+      <h1>#설문조사 에 오신 것을 환영합니다!</h1>
+      <p>학교 설문조사 채널의 시작이에요. 장난 설문은 금지! 실제로 사용할 설문만 올려주세요.</p>
     </div>
-
-    <input id="searchInput" class="input" placeholder="🔍 설문 검색" autocomplete="off">
-
-    <div class="filters">
-      <button class="filter-btn active" data-grade="all">전체</button>
-      <button class="filter-btn" data-grade="1">1학년</button>
-      <button class="filter-btn" data-grade="2">2학년</button>
-      <button class="filter-btn" data-grade="3">3학년</button>
-    </div>
-
-    <div id="surveyList" class="survey-list"></div>
+    <div id="teacherBanner" class="banner hidden">🛡️ 교사 모드 · 모든 설문의 결과 확인과 삭제가 가능합니다</div>
+    <div id="surveyList"></div>
     <div id="emptyState" class="empty hidden">설문이 없습니다. 다른 검색어나 학년을 선택해보세요.</div>
-
-    <section class="guide">
-      <h2>이용 안내</h2>
-      <p>① 처음 접속하면 학년·반·번호·이름을 입력합니다.</p>
-      <p>② 설문을 눌러 사이트 안에서 바로 응답합니다. (설문당 1회)</p>
-      <p>③ 장난 설문 금지! 실제로 사용할 설문만 올려주세요.</p>
-    </section>
   </main>
 
-  <div id="modal" class="modal hidden">
-    <div class="modal-backdrop" id="modalBackdrop"></div>
-    <div class="modal-box" id="modalBox"></div>
-  </div>
-  <div id="toast" class="toast"></div>
+  <footer class="composer">
+    <button id="openAdd" class="composer-box"><span class="plus">＋</span><span>새 설문 만들기...</span></button>
+  </footer>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js"></script>
+<div id="modal" class="modal hidden">
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="modal-box" id="modalBox"></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
 </body>
 </html>
