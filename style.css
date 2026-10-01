@@ -125,4 +125,10 @@ td.wrap{white-space:normal;min-width:120px}
   .msg{gap:10px;padding:8px 12px}
   .avatar{width:34px;height:34px}
   .row{flex-wrap:wrap}
+  .filter-btn.teacher-tab.active{background:#23a559}
+.bot-tag.teacher{background:#23a559}
+.embed.teacher{border-left-color:#23a559}
+.embed.teacher h3{color:#57d28a}
+.avatar.teacher{background:#23a559}
+.composer-box.locked{opacity:.6}
 }
