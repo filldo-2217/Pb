@@ -1,506 +1,195 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>학교 설문조사</title>
 
     <link rel="stylesheet" href="style.css">
-
-     <link rel="manifest" href="manifest.json">
-
-    <meta name="theme-color" content="#1a73e8">
-
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1f22">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="학교 설문조사">
-
     <link rel="apple-touch-icon" href="icon-192.png">
 </head>
-
 <body>
 
-<header class="header">
+<div class="app">
 
-    <div class="header-inner">
+    <!-- 왼쪽 네비게이션 (서버 아이콘 + 채널 목록) -->
+    <div class="nav-wrap" id="navWrap">
 
-        <a
-            href="#"
-            class="logo"
-            onclick="location.reload(); return false;"
-        >
-            <span class="logo-icon">GH</span>
-            <span>학교 설문조사</span>
-        </a>
+        <aside class="rail">
+            <button class="rail-btn home" title="홈" onclick="location.reload()">GH</button>
+            <div class="rail-sep"></div>
+            <button class="rail-btn add" id="railAdd" title="설문 만들기">+</button>
+        </aside>
 
-        <nav class="nav">
-            <a href="#surveys">설문 목록</a>
-            <a href="#guide">이용 안내</a>
-        </nav>
+        <aside class="sidebar">
+            <div class="sidebar-header">학교 설문조사</div>
 
+            <div class="channels">
+                <div class="category">설문</div>
+                <button class="channel active" data-view="all">
+                    <span class="hash">#</span><span class="name">전체-설문</span>
+                    <span class="badge" data-badge="all"></span>
+                </button>
+                <button class="channel" data-view="1">
+                    <span class="hash">#</span><span class="name">1학년</span>
+                    <span class="badge" data-badge="1"></span>
+                </button>
+                <button class="channel" data-view="2">
+                    <span class="hash">#</span><span class="name">2학년</span>
+                    <span class="badge" data-badge="2"></span>
+                </button>
+                <button class="channel" data-view="3">
+                    <span class="hash">#</span><span class="name">3학년</span>
+                    <span class="badge" data-badge="3"></span>
+                </button>
+
+                <div class="category">내 공간</div>
+                <button class="channel" data-view="mine">
+                    <span class="hash">#</span><span class="name">내가-만든-설문</span>
+                    <span class="badge" data-badge="mine"></span>
+                </button>
+                <button class="channel" data-view="guide">
+                    <span class="hash">#</span><span class="name">이용-안내</span>
+                </button>
+            </div>
+
+            <button class="user-panel" id="userPanel" title="내 정보 수정">
+                <div class="avatar sm" id="userAvatar">?</div>
+                <div class="user-text">
+                    <strong id="userName">신원 미설정</strong>
+                    <span id="userSub">클릭해서 입력하기</span>
+                </div>
+            </button>
+        </aside>
     </div>
 
-</header>
+    <div class="overlay" id="navOverlay"></div>
 
+    <!-- 메인 -->
+    <main class="main">
+        <header class="topbar">
+            <button class="menu-btn" id="menuBtn" aria-label="메뉴">☰</button>
+            <span class="hash big">#</span>
+            <h1 id="channelTitle">전체-설문</h1>
+            <span class="divider-v"></span>
+            <span class="topic" id="channelTopic">현재 올라온 모든 설문</span>
 
-<main id="surveys">
+            <div class="top-actions">
+                <button class="btn btn-green" id="openCreate">+ 설문 만들기</button>
+                <input id="searchInput" class="search" type="text" placeholder="검색" autocomplete="off">
+            </div>
+        </header>
 
-    <section class="survey-section">
+        <div class="feed" id="feed"></div>
+    </main>
+</div>
 
-        <div class="section-header">
-
+<!-- 내 정보 모달 -->
+<div class="modal hidden" id="profileModal">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box small">
+        <div class="modal-head">
             <div>
-
-                <p class="section-label">
-                    설문조사
-                </p>
-
-                <h1>
-                    설문 목록
-                </h1>
-
-                <p class="section-description">
-                    현재 참여할 수 있는 설문입니다.
-                </p>
-
+                <h2>내 정보</h2>
+                <p class="muted">설문에 참여할 때 이 정보가 함께 제출돼요.</p>
             </div>
-
-            <div class="survey-count">
-                <strong id="surveyCount">0</strong>개
-            </div>
-
+            <button class="x" data-close>×</button>
         </div>
-
-
-        <div class="search-box">
-
-            <span class="search-icon">⌕</span>
-
-            <input
-                type="text"
-                id="searchInput"
-                placeholder="설문을 검색해보세요"
-                autocomplete="off"
-            >
-
-        </div>
-
-
-        <div class="grade-filter">
-
-            <button
-                class="filter-btn active"
-                data-grade="all"
-            >
-                전체
-            </button>
-
-            <button
-                class="filter-btn"
-                data-grade="1"
-            >
-                1학년
-            </button>
-
-            <button
-                class="filter-btn"
-                data-grade="2"
-            >
-                2학년
-            </button>
-
-            <button
-                class="filter-btn"
-                data-grade="3"
-            >
-                3학년
-            </button>
-
-        </div>
-
-
-        <button
-            class="add-survey-button"
-            id="openAddSurvey"
-        >
-            <span>＋</span>
-            설문 추가하기
-        </button>
-
-
-        <div
-            id="surveyList"
-            class="survey-list"
-        ></div>
-
-
-        <div
-            id="emptyState"
-            class="empty-state hidden"
-        >
-
-            <div class="empty-icon">
-                －
-            </div>
-
-            <h3>
-                설문이 없습니다.
-            </h3>
-
-            <p>
-                다른 검색어나 학년을 선택해보세요.
-            </p>
-
-        </div>
-
-    </section>
-
-
-    <section
-        id="guide"
-        class="guide-section"
-    >
-
-        <div class="guide-inner">
-
-            <p class="section-label">
-                GUIDE
-            </p>
-
-            <h2>
-                이용 안내
-            </h2>
-
-            <div class="guide-grid">
-
-                <div class="guide-item">
-
-                    <span class="guide-number">
-                        01
-                    </span>
-
-                    <div>
-
-                        <h3>
-                            설문 찾기
-                        </h3>
-
-                        <p>
-                            검색하거나 학년을 선택해서
-                            원하는 설문을 찾아보세요.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="guide-item">
-
-                    <span class="guide-number">
-                        02
-                    </span>
-
-                    <div>
-
-                        <h3>
-                            설문 주의
-                        </h3>
-
-                        <p>
-                            장난으로 올리는것이 아닌
-                            진짜로 사용할 설문조사를 올려주세요.
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="guide-item">
-
-                    <span class="guide-number">
-                        03
-                    </span>
-
-                    <div>
-
-                        <h3>
-                            설문 만들기
-                        </h3>
-
-                        <p>
-                            누구나 새로운 설문을
-                            등록할 수 있습니다.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-</main>
-
-
-<!-- 설문 추가 모달 -->
-
-<div
-    id="addModal"
-    class="modal hidden"
->
-
-    <div class="modal-backdrop"></div>
-
-    <div class="modal-box">
-
-        <div class="modal-header">
-
-            <div>
-
-                <p class="section-label">
-                    NEW SURVEY
-                </p>
-
-                <h2>
-                    설문 추가하기
-                </h2>
-
-            </div>
-
-            <button
-                class="modal-close"
-                id="closeAddSurvey"
-            >
-                ×
-            </button>
-
-        </div>
-
-
-        <form id="surveyForm">
-
-            <div class="form-group">
-
-                <label for="surveyTitle">
-                    설문 제목
-                </label>
-
-                <input
-                    id="surveyTitle"
-                    type="text"
-                    maxlength="100"
-                    placeholder="예: 2026 2학기 학교생활 만족도 조사"
-                    required
-                >
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label for="surveyDescription">
-                    설명
-                </label>
-
-                <textarea
-                    id="surveyDescription"
-                    maxlength="300"
-                    placeholder="설문에 대한 간단한 설명을 입력해주세요."
-                    required
-                ></textarea>
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label>
-                    대상 학년
-                </label>
-
-                <div class="grade-checkboxes">
-
-                    <label class="check-label">
-
-                        <input
-                            type="checkbox"
-                            name="grade"
-                            value="1"
-                        >
-
-                        <span>
-                            1학년
-                        </span>
-
-                    </label>
-
-
-                    <label class="check-label">
-
-                        <input
-                            type="checkbox"
-                            name="grade"
-                            value="2"
-                        >
-
-                        <span>
-                            2학년
-                        </span>
-
-                    </label>
-
-
-                    <label class="check-label">
-
-                        <input
-                            type="checkbox"
-                            name="grade"
-                            value="3"
-                        >
-
-                        <span>
-                            3학년
-                        </span>
-
-                    </label>
-
-                </div>
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label for="surveyDeadline">
-                    마감일
-                </label>
-
-                <input
-                    id="surveyDeadline"
-                    type="date"
-                    required
-                >
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label for="surveyUrl">
-                    설문 링크
-                </label>
-
-                <input
-                    id="surveyUrl"
-                    type="url"
-                    placeholder="https://forms.google.com/..."
-                    required
-                >
-
-                <p class="input-help">
-                    구글 폼 등 실제 설문이 있는 주소를 입력해주세요.
-                </p>
-
-            </div>
-
-
-            <div
-                id="formError"
-                class="form-error hidden"
-            ></div>
-
-
-            <button
-                type="submit"
-                class="submit-button"
-                id="submitSurvey"
-            >
-                설문 등록하기
-            </button>
-
+        <form id="profileForm" class="modal-body">
+            <div id="profileFields"></div>
+            <div class="form-error hidden" id="profileError"></div>
+            <button type="submit" class="btn btn-primary wide">저장</button>
         </form>
-
     </div>
-
 </div>
 
+<!-- 설문 만들기 모달 -->
+<div class="modal hidden" id="createModal">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box">
+        <div class="modal-head">
+            <div>
+                <h2>설문 만들기</h2>
+                <p class="muted">장난이 아닌, 진짜로 사용할 설문만 올려주세요.</p>
+            </div>
+            <button class="x" data-close>×</button>
+        </div>
 
-<!-- QR 모달 -->
+        <form id="createForm" class="modal-body">
+            <label class="field">
+                <span>설문 제목</span>
+                <input id="cTitle" type="text" maxlength="100" placeholder="예: 2학기 학교생활 만족도 조사">
+            </label>
 
-<div
-    id="qrModal"
-    class="modal hidden"
->
+            <label class="field">
+                <span>설명</span>
+                <textarea id="cDesc" maxlength="300" rows="3" placeholder="설문에 대한 간단한 설명"></textarea>
+            </label>
 
-    <div class="modal-backdrop"></div>
+            <div class="field">
+                <span>대상 학년</span>
+                <div class="chips">
+                    <label class="chip"><input type="checkbox" name="cGrade" value="1"><b>1학년</b></label>
+                    <label class="chip"><input type="checkbox" name="cGrade" value="2"><b>2학년</b></label>
+                    <label class="chip"><input type="checkbox" name="cGrade" value="3"><b>3학년</b></label>
+                </div>
+            </div>
 
-    <div class="qr-modal-box">
+            <label class="field">
+                <span>마감일</span>
+                <input id="cDeadline" type="date">
+            </label>
 
-        <button
-            class="modal-close qr-close"
-            id="closeQr"
-        >
-            ×
-        </button>
+            <div class="field">
+                <span>질문</span>
+                <div id="qList"></div>
+                <button type="button" class="btn btn-secondary wide" id="addQ">+ 질문 추가</button>
+            </div>
 
-        <p class="section-label">
-            QR CODE
-        </p>
-
-        <h2 id="qrTitle">
-            설문 QR 코드
-        </h2>
-
-        <div
-            id="qrcode"
-            class="qrcode"
-        ></div>
-
-        <p class="qr-description">
-            스마트폰으로 QR 코드를 스캔하면
-            설문에 바로 참여할 수 있습니다.
-        </p>
-
-        <button
-            id="downloadQr"
-            class="submit-button"
-        >
-            QR코드 저장
-        </button>
-
+            <div class="form-error hidden" id="createError"></div>
+            <button type="submit" class="btn btn-primary wide" id="createSubmit">설문 등록하기</button>
+        </form>
     </div>
-
 </div>
 
+<!-- 설문 참여 모달 -->
+<div class="modal hidden" id="answerModal">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box">
+        <div class="modal-head">
+            <div>
+                <h2 id="answerTitle"></h2>
+                <p class="muted" id="answerDesc"></p>
+            </div>
+            <button class="x" data-close>×</button>
+        </div>
+        <div class="modal-body" id="answerBody"></div>
+    </div>
+</div>
 
-<div
-    id="toast"
-    class="toast"
-></div>
+<!-- 결과 모달 -->
+<div class="modal hidden" id="resultModal">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box wide-box">
+        <div class="modal-head">
+            <div>
+                <h2 id="resultTitle"></h2>
+                <p class="muted" id="resultSub"></p>
+            </div>
+            <button class="x" data-close>×</button>
+        </div>
+        <div class="modal-body" id="resultBody"></div>
+    </div>
+</div>
 
-
-<!-- Supabase -->
+<div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- QR Code -->
-
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-
-<!-- JavaScript -->
-
 <script src="script.js"></script>
-
 </body>
 </html>
