@@ -1,22 +1,14 @@
 {
   "name": "학교 설문조사",
   "short_name": "학교 설문조사",
-  "description": "학교 설문을 사이트 안에서 바로 참여하고 관리하는 설문조사 서비스",
+  "description": "학교 설문을 만들고 참여할 수 있는 설문조사 서비스",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#1e1f22",
-  "theme_color": "#1e1f22",
+  "background_color": "#313338",
+  "theme_color": "#313338",
   "orientation": "portrait",
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
