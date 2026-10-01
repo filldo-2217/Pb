@@ -1,120 +1,63 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>학교 설문조사</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1a73e8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="학교 설문조사">
-    <link rel="apple-touch-icon" href="icon-192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학교 설문조사</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e1f22">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="학교 설문조사">
+  <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
-
-<header class="header">
-    <div class="header-inner">
-        <a href="#" class="logo" onclick="location.reload(); return false;">
-            <span class="logo-icon">GH</span>
-            <span>학교 설문조사</span>
-        </a>
-        <nav class="nav">
-            <a href="#surveys">설문 목록</a>
-            <a href="#guide">이용 안내</a>
-            <button id="profileBtn" class="chip">👤 정보 입력</button>
-            <button id="teacherBtn" class="chip">🔑 교사</button>
-        </nav>
+  <header class="topbar">
+    <div class="brand"><span class="logo-icon">GH</span><span># 학교-설문조사</span></div>
+    <div class="top-actions">
+      <button id="profileBtn" class="chip"></button>
+      <button id="teacherBtn" class="chip teacher">🔑 교사</button>
     </div>
-</header>
+  </header>
 
-<main id="surveys">
-    <section class="survey-section">
-        <div id="teacherBanner" class="banner hidden">
-            🛡️ 교사 모드입니다. 모든 설문의 결과 확인·삭제가 가능합니다.
-        </div>
+  <main class="container">
+    <div id="teacherBanner" class="banner hidden">🛡️ 교사 모드입니다. 모든 설문의 결과 확인과 삭제가 가능합니다.</div>
 
-        <div class="section-header">
-            <div>
-                <p class="section-label">설문조사</p>
-                <h1>설문 목록</h1>
-                <p class="section-description">현재 참여할 수 있는 설문입니다</p>
-            </div>
-            <div class="survey-count"><strong id="surveyCount">0</strong>개</div>
-        </div>
-
-        <div class="search-box">
-            <span class="search-icon">⌕</span>
-            <input type="text" id="searchInput" placeholder="설문을 검색해보세요" autocomplete="off">
-        </div>
-
-        <div class="grade-filter">
-            <button class="filter-btn active" data-grade="all">전체</button>
-            <button class="filter-btn" data-grade="1">1학년</button>
-            <button class="filter-btn" data-grade="2">2학년</button>
-            <button class="filter-btn" data-grade="3">3학년</button>
-        </div>
-
-        <button class="add-survey-button" id="openAddSurvey"><span>＋</span> 설문 추가하기</button>
-
-        <div id="surveyList" class="survey-list"></div>
-
-        <div id="emptyState" class="empty-state hidden">
-            <div class="empty-icon">－</div>
-            <h3>설문이 없습니다</h3>
-            <p>다른 검색어나 학년을 선택해보세요</p>
-        </div>
-    </section>
-
-    <section id="guide" class="guide-section">
-        <div class="guide-inner">
-            <p class="section-label">GUIDE</p>
-            <h2>이용 안내</h2>
-            <div class="guide-grid">
-                <div class="guide-item">
-                    <span class="guide-number">01</span>
-                    <div><h3>내 정보 입력</h3>
-                    <p>처음 접속하면 학년·반·번호·이름을 입력해요. 선생님이 누가 참여했는지 확인할 수 있어요</p></div>
-                </div>
-                <div class="guide-item">
-                    <span class="guide-number">02</span>
-                    <div><h3>설문 참여</h3>
-                    <p>설문을 골라 사이트 안에서 바로 응답하세요. 설문당 1번만 참여할 수 있어요</p></div>
-                </div>
-                <div class="guide-item">
-                    <span class="guide-number">03</span>
-                    <div><h3>설문 주의</h3>
-                    <p>장난으로 올리는 것이 아닌 진짜로 사용할 설문조사를 올려주세요</p></div>
-                </div>
-            </div>
-        </div>
-    </section>
-</main>
-
-<!-- 공용 모달 (정보입력 / 교사로그인 / 설문만들기 / 응답 / 결과) -->
-<div id="appModal" class="modal hidden">
-    <div class="modal-backdrop" id="appBackdrop"></div>
-    <div class="modal-box" id="appBox"></div>
-</div>
-
-<!-- QR 모달 -->
-<div id="qrModal" class="modal hidden">
-    <div class="modal-backdrop"></div>
-    <div class="qr-modal-box">
-        <button class="modal-close qr-close" id="closeQr">×</button>
-        <p class="section-label">QR CODE</p>
-        <h2 id="qrTitle">설문 QR 코드</h2>
-        <div id="qrcode" class="qrcode"></div>
-        <p class="qr-description">스마트폰으로 QR 코드를 스캔하면<br>설문에 바로 참여할 수 있습니다</p>
-        <button id="downloadQr" class="submit-button">QR코드 저장</button>
+    <div class="section-head">
+      <div>
+        <h1>설문 목록</h1>
+        <p class="muted">참여할 수 있는 설문을 확인하세요 · <b id="surveyCount">0</b>개</p>
+      </div>
+      <button id="openAdd" class="btn primary">＋ 설문 만들기</button>
     </div>
-</div>
 
-<div id="toast" class="toast"></div>
+    <input id="searchInput" class="input" placeholder="🔍 설문 검색" autocomplete="off">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="script.js"></script>
+    <div class="filters">
+      <button class="filter-btn active" data-grade="all">전체</button>
+      <button class="filter-btn" data-grade="1">1학년</button>
+      <button class="filter-btn" data-grade="2">2학년</button>
+      <button class="filter-btn" data-grade="3">3학년</button>
+    </div>
+
+    <div id="surveyList" class="survey-list"></div>
+    <div id="emptyState" class="empty hidden">설문이 없습니다. 다른 검색어나 학년을 선택해보세요.</div>
+
+    <section class="guide">
+      <h2>이용 안내</h2>
+      <p>① 처음 접속하면 학년·반·번호·이름을 입력합니다.</p>
+      <p>② 설문을 눌러 사이트 안에서 바로 응답합니다. (설문당 1회)</p>
+      <p>③ 장난 설문 금지! 실제로 사용할 설문만 올려주세요.</p>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-box" id="modalBox"></div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
 </body>
 </html>
