@@ -1,296 +1,63 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>학교 설문조사</title>
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#313338">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="학교 설문조사">
-<link rel="apple-touch-icon" href="icon-192.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>학교 설문조사</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e1f22">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="학교 설문조사">
+  <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
-
-<div class="app">
-
-  <!-- 상단 바 -->
   <header class="topbar">
-    <div class="topbar-left">
-      <span class="hash">#</span>
-      <h1>설문-목록</h1>
-      <span class="vline"></span>
-      <span class="topic">우리 학교 학생들을 위한 설문 게시판</span>
-    </div>
-    <div class="topbar-right">
-      <button id="btnTeacher" class="ghost-btn" type="button">교사 로그인</button>
-      <button id="btnProfile" class="user-chip" type="button"></button>
+    <div class="brand"><span class="logo-icon">GH</span><span># 학교-설문조사</span></div>
+    <div class="top-actions">
+      <button id="profileBtn" class="chip"></button>
+      <button id="teacherBtn" class="chip teacher">🔑 교사</button>
     </div>
   </header>
 
-  <!-- 피드 -->
-  <main class="feed">
-    <div class="feed-inner">
+  <main class="container">
+    <div id="teacherBanner" class="banner hidden">🛡️ 교사 모드입니다. 모든 설문의 결과 확인과 삭제가 가능합니다.</div>
 
-      <div class="toolbar">
-        <div class="search">
-          <span>⌕</span>
-          <input id="searchInput" type="text" placeholder="설문 검색" autocomplete="off">
-        </div>
-        <div class="count"><b id="surveyCount">0</b>개</div>
+    <div class="section-head">
+      <div>
+        <h1>설문 목록</h1>
+        <p class="muted">참여할 수 있는 설문을 확인하세요 · <b id="surveyCount">0</b>개</p>
       </div>
-
-      <div class="chips" id="tabChips">
-        <button class="chip active" data-tab="all" type="button">전체</button>
-        <button class="chip" data-tab="open" type="button">진행 중</button>
-        <button class="chip" data-tab="closed" type="button">마감</button>
-        <button class="chip" data-tab="done" type="button">참여 완료</button>
-        <button class="chip" data-tab="mine" type="button">내가 만든</button>
-      </div>
-
-      <div class="chips" id="gradeChips">
-        <button class="chip active" data-grade="all" type="button">모든 학년</button>
-        <button class="chip" data-grade="1" type="button">1학년</button>
-        <button class="chip" data-grade="2" type="button">2학년</button>
-        <button class="chip" data-grade="3" type="button">3학년</button>
-      </div>
-
-      <div id="teacherStats" class="stats hidden"></div>
-
-      <!-- 안내 (설문봇 메시지) -->
-      <article class="msg">
-        <div class="avatar" style="background:#5865f2">설</div>
-        <div class="msg-body">
-          <div class="msg-head"><span class="author">설문봇</span><span class="tag">봇</span></div>
-          <div class="embed" style="--bar:#5865f2">
-            <div class="embed-title">📌 이용 안내</div>
-            <div class="embed-desc">
-              <b>1.</b> 처음 한 번 학년·반·번호·이름을 설정하면 응답할 때 자동으로 함께 제출돼요.<br>
-              <b>2.</b> 같은 번호로는 설문마다 한 번만 응답할 수 있어요.<br>
-              <b>3.</b> 아래 <b>+ 새 설문 만들기</b>로 누구나 설문을 올릴 수 있어요. 장난 설문은 선생님이 삭제할 수 있어요.<br>
-              <b>4.</b> 다른 친구의 정보로 응답하지 마세요. 모든 응답은 선생님이 확인합니다.
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <div id="surveyList"></div>
-
-      <div id="emptyState" class="empty hidden">
-        <div class="empty-icon">∅</div>
-        <h3>설문이 없습니다</h3>
-        <p>다른 검색어나 필터를 선택해보세요</p>
-      </div>
-
+      <button id="openAdd" class="btn primary">＋ 설문 만들기</button>
     </div>
+
+    <input id="searchInput" class="input" placeholder="🔍 설문 검색" autocomplete="off">
+
+    <div class="filters">
+      <button class="filter-btn active" data-grade="all">전체</button>
+      <button class="filter-btn" data-grade="1">1학년</button>
+      <button class="filter-btn" data-grade="2">2학년</button>
+      <button class="filter-btn" data-grade="3">3학년</button>
+    </div>
+
+    <div id="surveyList" class="survey-list"></div>
+    <div id="emptyState" class="empty hidden">설문이 없습니다. 다른 검색어나 학년을 선택해보세요.</div>
+
+    <section class="guide">
+      <h2>이용 안내</h2>
+      <p>① 처음 접속하면 학년·반·번호·이름을 입력합니다.</p>
+      <p>② 설문을 눌러 사이트 안에서 바로 응답합니다. (설문당 1회)</p>
+      <p>③ 장난 설문 금지! 실제로 사용할 설문만 올려주세요.</p>
+    </section>
   </main>
 
-  <!-- 하단 입력창 모양 버튼 -->
-  <div class="composer-wrap">
-    <button id="btnNew" class="composer" type="button">
-      <span class="plus">+</span>
-      <span>새 설문 만들기…</span>
-    </button>
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+    <div class="modal-box" id="modalBox"></div>
   </div>
-</div>
+  <div id="toast" class="toast"></div>
 
-
-<!-- ============ 첫 접속 안내 / 내 정보 ============ -->
-<div id="onboardModal" class="modal hidden">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-box">
-
-    <div id="obStep1">
-      <div class="ob-logo">GH</div>
-      <h2 class="center">학교 설문조사에 오신 걸 환영해요!</h2>
-      <ul class="ob-list">
-        <li><b>1</b><span>설문에 참여하려면 <em>학년 · 반 · 번호 · 이름</em>이 필요해요.</span></li>
-        <li><b>2</b><span>입력한 정보는 설문 응답과 함께 <em>선생님께 전달</em>돼요.</span></li>
-        <li><b>3</b><span>설문은 <em>번호당 1번</em>만 응답할 수 있어요. 정확히 입력해주세요!</span></li>
-      </ul>
-      <button id="obNext" class="btn primary block" type="button">내 정보 입력하기</button>
-      <button id="obTeacher" class="link-btn" type="button">선생님이신가요? 교사 로그인</button>
-    </div>
-
-    <form id="profileForm" class="hidden">
-      <p class="section-label">MY PROFILE</p>
-      <h2 id="profileTitle">내 정보 설정</h2>
-      <p class="muted">이 기기에 저장되며, 설문 응답 시 함께 제출돼요.</p>
-
-      <div class="form-group">
-        <label>학년</label>
-        <div class="seg-row">
-          <label class="seg"><input type="radio" name="pGrade" value="1"><span>1학년</span></label>
-          <label class="seg"><input type="radio" name="pGrade" value="2"><span>2학년</span></label>
-          <label class="seg"><input type="radio" name="pGrade" value="3"><span>3학년</span></label>
-        </div>
-      </div>
-
-      <div class="row2">
-        <div class="form-group">
-          <label for="pClass">반</label>
-          <input id="pClass" type="number" min="1" max="30" inputmode="numeric" placeholder="예: 3">
-        </div>
-        <div class="form-group">
-          <label for="pNo">번호</label>
-          <input id="pNo" type="number" min="1" max="60" inputmode="numeric" placeholder="예: 12">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="pName">이름</label>
-        <input id="pName" type="text" maxlength="20" placeholder="실명을 입력하세요">
-      </div>
-
-      <div id="profileError" class="form-error hidden"></div>
-      <button class="btn primary block" type="submit">저장하고 시작하기</button>
-      <button id="profileCancel" class="link-btn hidden" type="button">취소</button>
-    </form>
-
-  </div>
-</div>
-
-
-<!-- ============ 교사 로그인 ============ -->
-<div id="loginModal" class="modal hidden">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-box small">
-    <div class="modal-header">
-      <div><p class="section-label">TEACHER</p><h2>교사 로그인</h2></div>
-      <button class="modal-close" data-close type="button">×</button>
-    </div>
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="loginEmail">이메일</label>
-        <input id="loginEmail" type="email" autocomplete="username" required>
-      </div>
-      <div class="form-group">
-        <label for="loginPw">비밀번호</label>
-        <input id="loginPw" type="password" autocomplete="current-password" required>
-      </div>
-      <div id="loginError" class="form-error hidden"></div>
-      <button id="loginSubmit" class="btn primary block" type="submit">로그인</button>
-    </form>
-  </div>
-</div>
-
-
-<!-- ============ 설문 만들기 ============ -->
-<div id="builderModal" class="modal hidden">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-box wide">
-    <div class="modal-header">
-      <div><p class="section-label">NEW SURVEY</p><h2>새 설문 만들기</h2></div>
-      <button class="modal-close" data-close type="button">×</button>
-    </div>
-
-    <form id="builderForm">
-      <div class="form-group">
-        <label for="bTitle">설문 제목</label>
-        <input id="bTitle" type="text" maxlength="100" placeholder="예: 2026 2학기 학교생활 만족도 조사">
-      </div>
-      <div class="form-group">
-        <label for="bDesc">설명</label>
-        <textarea id="bDesc" maxlength="500" placeholder="설문에 대한 간단한 설명 (선택)"></textarea>
-      </div>
-
-      <div class="row2">
-        <div class="form-group">
-          <label>대상 학년</label>
-          <div class="seg-row">
-            <label class="seg"><input type="checkbox" name="bGrade" value="1"><span>1학년</span></label>
-            <label class="seg"><input type="checkbox" name="bGrade" value="2"><span>2학년</span></label>
-            <label class="seg"><input type="checkbox" name="bGrade" value="3"><span>3학년</span></label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="bDeadline">마감일 (선택)</label>
-          <input id="bDeadline" type="date">
-        </div>
-      </div>
-
-      <h3 class="sub-title">질문</h3>
-      <div id="qList"></div>
-
-      <div class="add-q">
-        <button type="button" class="chip" data-addq="short">+ 단답형</button>
-        <button type="button" class="chip" data-addq="long">+ 장문형</button>
-        <button type="button" class="chip" data-addq="single">+ 객관식</button>
-        <button type="button" class="chip" data-addq="multi">+ 체크박스</button>
-        <button type="button" class="chip" data-addq="scale">+ 5점 척도</button>
-      </div>
-
-      <div id="builderError" class="form-error hidden"></div>
-      <button id="builderSubmit" class="btn primary block" type="submit">설문 등록하기</button>
-    </form>
-  </div>
-</div>
-
-
-<!-- ============ 설문 응답 ============ -->
-<div id="answerModal" class="modal hidden">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-box wide">
-    <div class="modal-header">
-      <div><p class="section-label" id="aMeta">SURVEY</p><h2 id="aTitle"></h2></div>
-      <button class="modal-close" data-close type="button">×</button>
-    </div>
-    <p id="aDesc" class="muted pre"></p>
-    <div class="respondent">
-      <span>응답자</span><b id="aWho"></b>
-      <button id="aChange" class="link-btn inline" type="button">수정</button>
-    </div>
-    <form id="answerForm">
-      <div id="aQuestions"></div>
-      <div id="answerError" class="form-error hidden"></div>
-      <button id="answerSubmit" class="btn primary block" type="submit">제출하기</button>
-    </form>
-  </div>
-</div>
-
-
-<!-- ============ 결과 ============ -->
-<div id="resultModal" class="modal hidden">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-box wide">
-    <div class="modal-header">
-      <div><p class="section-label">RESULTS</p><h2 id="resTitle"></h2></div>
-      <button class="modal-close" data-close type="button">×</button>
-    </div>
-    <div class="res-actions">
-      <div class="chips">
-        <button class="chip active" data-rtab="summary" type="button">요약</button>
-        <button class="chip" data-rtab="list" type="button">응답자별</button>
-      </div>
-      <button id="btnCsv" class="btn ghost" type="button">CSV 저장</button>
-    </div>
-    <div id="resBody"></div>
-  </div>
-</div>
-
-
-<!-- ============ QR / 링크 ============ -->
-<div id="qrModal" class="modal hidden">
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-box small center">
-    <button class="modal-close qr-close" data-close type="button">×</button>
-    <p class="section-label">SHARE</p>
-    <h2 id="qrTitle"></h2>
-    <div id="qrcode" class="qrcode"></div>
-    <p class="muted">QR을 스캔하거나 링크를 공유하면<br>바로 설문에 참여할 수 있어요</p>
-    <div class="btn-row">
-      <button id="copyLink" class="btn ghost" type="button">링크 복사</button>
-      <button id="downloadQr" class="btn primary" type="button">QR 저장</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-<script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
 </body>
 </html>
